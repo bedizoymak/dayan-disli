@@ -2,6 +2,13 @@ import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Navigation = () => {
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-navy/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-6 py-4">
@@ -14,12 +21,12 @@ export const Navigation = () => {
           </div>
           
           <div className="hidden md:flex items-center gap-8">
-            <a href="#" className="text-foreground hover:text-primary transition-colors">Ana Sayfa</a>
-            <a href="#services" className="text-foreground hover:text-primary transition-colors">Hizmetler</a>
-            <a href="#technologies" className="text-foreground hover:text-primary transition-colors">Teknolojiler</a>
-            <a href="#products" className="text-foreground hover:text-primary transition-colors">Ürünler</a>
-            <a href="#sectors" className="text-foreground hover:text-primary transition-colors">Sektörler</a>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-foreground hover:text-primary transition-colors">Ana Sayfa</button>
+            <button onClick={() => scrollToSection('services')} className="text-foreground hover:text-primary transition-colors">Hizmetler</button>
+            <button onClick={() => scrollToSection('technologies')} className="text-foreground hover:text-primary transition-colors">Teknolojiler</button>
+            <button onClick={() => scrollToSection('products')} className="text-foreground hover:text-primary transition-colors">Ürünler</button>
+            <button onClick={() => scrollToSection('sectors')} className="text-foreground hover:text-primary transition-colors">Sektörler</button>
+            <Button onClick={() => scrollToSection('contact')} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               İletişim
             </Button>
           </div>
