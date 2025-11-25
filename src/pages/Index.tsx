@@ -7,6 +7,7 @@ import { WhyUs } from "@/components/WhyUs";
 import { Stats } from "@/components/Stats";
 import { Sectors } from "@/components/Sectors";
 import { CTA } from "@/components/CTA";
+import { Footer } from "@/components/Footer";
 
 const Index = () => {
   return (
@@ -20,6 +21,7 @@ const Index = () => {
       <Stats />
       <Sectors />
       <CTA />
+      <Footer />
     </div>
   );
 };
