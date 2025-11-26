@@ -1,73 +1,119 @@
-# Welcome to your Lovable project
+🚀 Overview
 
-## Project info
+This project is a multilingual one-page website built with modern frontend tools.
+The structure is optimized for both performance and mobile responsiveness.
+All revisions are developed locally in VS Code and synced to GitHub, then deployed to the hosting environment.
 
-**URL**: https://lovable.dev/projects/5ec5dc77-ad57-4381-8020-2663a3733fe1
+🌍 Features
 
-## How can I edit this code?
+Multi-language support (TR / DE / EN)
 
-There are several ways of editing your application.
+IP-based language redirection (TR → Turkish, EU countries → German, others → English)
 
-**Use Lovable**
+Fully responsive UI
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5ec5dc77-ad57-4381-8020-2663a3733fe1) and start prompting.
+Smooth scroll navigation
 
-Changes made via Lovable will be committed automatically to this repo.
+Easy deployment workflow
 
-**Use your preferred IDE**
+GitHub → Hosting automatic sync (Lovable)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+📁 Tech Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+HTML5 / CSS3 / JavaScript
 
-Follow these steps:
+Lovable.dev (AI code generation & hosting)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+GitHub (version control)
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+VS Code (local development)
 
-# Step 3: Install the necessary dependencies.
-npm i
+FTP Deployment (GoDaddy)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+🧩 Project Structure
+/public_html
+│── index.html
+│── styles/
+│     └── style.css
+│── assets/
+│     ├── images/
+│     └── icons/
+│── scripts/
+│     └── app.js
+└── readme.md
+
+🔄 Development Workflow
+
+Clone the repo to your computer
+
+git clone https://github.com/username/project.git
+
+
+Make revisions in VS Code
+
+Update HTML sections
+
+Adjust CSS
+
+Add new components
+
+Modify language files
+
+Commit & Push
+
+git add .
+git commit -m "UI improvements + new language logic"
+git push origin main
+
+
+Automatic Sync
+
+Lovable immediately reflects the changes
+
+No manual upload needed
+
+Production Deployment
+
+npm install
+npm run build
+
+
+Then send the dist/ folder to GoDaddy via FTP (deploy@dayandisli.com
+).
+
+🌐 IP-Based Language Routing
+
+The site detects visitors’ country by IP and loads the correct language:
+
+IP Region	Language
+Turkey	🇹🇷 Turkish
+Germany / Netherlands / Austria / Switzerland	🇩🇪 German
+Other Countries	🇬🇧 English
+
+If VPN is active, language will adapt accordingly.
+
+🔧 Installation
+
+If you want to customize locally:
+
+npm install
 npm run dev
-```
 
-**Edit a file directly in GitHub**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Project starts at:
+http://localhost:3000
 
-**Use GitHub Codespaces**
+📦 Build for Production
+npm run build
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## What technologies are used for this project?
+Output folder:
 
-This project is built with:
+/dist
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
 
-## How can I deploy this project?
+Upload /dist to hosting via FTP.
 
-Simply open [Lovable](https://lovable.dev/projects/5ec5dc77-ad57-4381-8020-2663a3733fe1) and click on Share -> Publish.
+📞 Support
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+For questions or improvements, feel free to open an Issue or send a Pull Request.
