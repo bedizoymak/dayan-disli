@@ -8,6 +8,7 @@ import { Stats } from "@/components/Stats";
 import { Sectors } from "@/components/Sectors";
 import { CTA } from "@/components/CTA";
 import { Footer } from "@/components/Footer";
+import WhatsAppButton from "@/components/WhatsAppButton";
 
 const Index = () => {
   return (
@@ -22,6 +23,7 @@ const Index = () => {
       <Sectors />
       <CTA />
       <Footer />
+      <WhatsAppButton />
     </div>
   );
 };
