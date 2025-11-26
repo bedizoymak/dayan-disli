@@ -1,48 +1,51 @@
 import { Award, Clock, Users, DollarSign, HeadphonesIcon, Globe } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-
-const reasons = [
-  {
-    icon: Award,
-    title: "Yüksek Kalite Standartları",
-    description: "ISO 9001:2015 sertifikalı üretim süreçlerimiz ve DIN standartlarına uygun kalite kontrol sistemlerimizle, her üründe mükemmelliği garanti ediyoruz."
-  },
-  {
-    icon: Clock,
-    title: "Hızlı Teslimat",
-    description: "Optimize edilmiş üretim süreçlerimiz ve geniş stok kapasitemiz sayesinde, acil siparişlerinizi bile zamanında teslim ediyoruz."
-  },
-  {
-    icon: Users,
-    title: "Uzman Kadro",
-    description: "25 yılı aşkın deneyime sahip makine mühendisleri ve teknisyenlerimiz, en karmaşık projelerde bile size rehberlik ediyor."
-  },
-  {
-    icon: DollarSign,
-    title: "Rekabetçi Fiyatlar",
-    description: "Yüksek kaliteden ödün vermeden, sektörün en rekabetçi fiyatlarını sunuyoruz. Toplu siparişlerde özel indirimler mevcuttur."
-  },
-  {
-    icon: HeadphonesIcon,
-    title: "Satış Sonrası Destek",
-    description: "Ürün teslimatından sonra da yanınızdayız. Teknik destek, bakım ve onarım hizmetlerimizle sürekli destek sağlıyoruz."
-  },
-  {
-    icon: Globe,
-    title: "Uluslararası Deneyim",
-    description: "Avrupa, Orta Doğu ve Asya'ya ihracat deneyimimizle, global standartlarda üretim ve hizmet kalitesi sunuyoruz."
-  }
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const WhyUs = () => {
+  const { t } = useLanguage();
+  
+  const reasons = [
+    {
+      icon: Award,
+      title: t.whyUs.highQuality.title,
+      description: t.whyUs.highQuality.description
+    },
+    {
+      icon: Clock,
+      title: t.whyUs.fastDelivery.title,
+      description: t.whyUs.fastDelivery.description
+    },
+    {
+      icon: Users,
+      title: t.whyUs.expertTeam.title,
+      description: t.whyUs.expertTeam.description
+    },
+    {
+      icon: DollarSign,
+      title: t.whyUs.competitivePrices.title,
+      description: t.whyUs.competitivePrices.description
+    },
+    {
+      icon: HeadphonesIcon,
+      title: t.whyUs.afterSalesSupport.title,
+      description: t.whyUs.afterSalesSupport.description
+    },
+    {
+      icon: Globe,
+      title: t.whyUs.internationalExperience.title,
+      description: t.whyUs.internationalExperience.description
+    }
+  ];
+
   return (
     <section className="py-24 bg-navy">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">NEDEN BİZ?</p>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Precision Gear'ı Tercih Etme Nedenleri</h2>
+          <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">{t.whyUs.title}</p>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">{t.whyUs.heading}</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Sektörde fark yaratan özelliklerimiz ve müşteri odaklı yaklaşımımız
+            {t.whyUs.description}
           </p>
         </div>
         

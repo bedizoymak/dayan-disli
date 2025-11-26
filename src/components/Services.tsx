@@ -1,55 +1,58 @@
 import { Settings, Box, Wrench, CheckCircle, Flame, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-const services = [
-  {
-    icon: Settings,
-    title: "Gear Hobbing",
-    description: "Yüksek hassasiyetli gear hobbing makinelerimizle, düz ve helisel dişlilerin üretiminde mükemmel sonuçlar elde ediyoruz. Modül 0.5'ten 12'ye kadar geniş bir yelpazede üretim kapasitemiz bulunmaktadır.",
-    badges: ["Modül 0.5-12 arası", "Yüksek hassasiyet", "Hızlı üretim"]
-  },
-  {
-    icon: Box,
-    title: "CNC İşleme",
-    description: "Son teknoloji CNC torna ve freze makinelerimizle, karmaşık geometrilere sahip dişli ve mekanik parçaların hassas işlenmesini gerçekleştiriyoruz. 5 eksen işleme kapasitemiz mevcuttur.",
-    badges: ["5 eksen işleme", "Mikron hassasiyet", "Karmaşık geometriler"]
-  },
-  {
-    icon: Wrench,
-    title: "Dişli Taşlama",
-    description: "Hassas dişli taşlama makinelerimizle, DIN 5-6 kalite sınıfında yüzey kalitesi ve boyutsal hassasiyet sağlıyoruz. Sertleştirilmiş malzemelerde bile mükemmel sonuçlar elde ediyoruz.",
-    badges: ["DIN 5-6 kalite", "Sertleştirilmiş malzeme", "Yüzey kalitesi"]
-  },
-  {
-    icon: CheckCircle,
-    title: "Kalite Kontrol",
-    description: "CMM ölçüm cihazları, dişli test makineleri ve yüzey pürüzlülük ölçüm sistemlerimizle, üretilen her parçanın kalite standartlarına uygunluğunu garanti ediyoruz.",
-    badges: ["CMM ölçüm", "Dişli testi", "Tam dokümantasyon"]
-  },
-  {
-    icon: Flame,
-    title: "Isıl İşlem",
-    description: "Kendi bünyemizdeki ısıl işlem ünitelerimizde, sementasyon, su verme ve temperleme işlemleriyle dişlilerinizin mekanik özelliklerini optimize ediyoruz.",
-    badges: ["Sementasyon", "Su verme", "Temperleme"]
-  },
-  {
-    icon: Sparkles,
-    title: "Özel Çözümler",
-    description: "Müşteri ihtiyaçlarına özel tasarım ve üretim hizmetleri sunuyoruz. Prototipten seri üretime kadar tüm süreçlerde yanınızdayız.",
-    badges: ["Özel tasarım", "Prototip üretim", "Teknik destek"]
-  }
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const Services = () => {
+  const { t } = useLanguage();
+  
+  const services = [
+    {
+      icon: Settings,
+      title: t.services.gearHobbing.title,
+      description: t.services.gearHobbing.description,
+      badges: t.services.gearHobbing.badges
+    },
+    {
+      icon: Box,
+      title: t.services.cncMachining.title,
+      description: t.services.cncMachining.description,
+      badges: t.services.cncMachining.badges
+    },
+    {
+      icon: Wrench,
+      title: t.services.gearGrinding.title,
+      description: t.services.gearGrinding.description,
+      badges: t.services.gearGrinding.badges
+    },
+    {
+      icon: CheckCircle,
+      title: t.services.qualityControl.title,
+      description: t.services.qualityControl.description,
+      badges: t.services.qualityControl.badges
+    },
+    {
+      icon: Flame,
+      title: t.services.heatTreatment.title,
+      description: t.services.heatTreatment.description,
+      badges: t.services.heatTreatment.badges
+    },
+    {
+      icon: Sparkles,
+      title: t.services.customSolutions.title,
+      description: t.services.customSolutions.description,
+      badges: t.services.customSolutions.badges
+    }
+  ];
+
   return (
     <section id="services" className="py-24 bg-navy-light">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">HİZMETLERİMİZ</p>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Kapsamlı Üretim Çözümleri</h2>
+          <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">{t.services.title}</p>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">{t.services.heading}</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Modern makine parkurumuz ve uzman ekibimizle, dişli üretiminin her aşamasında profesyonel hizmet sunuyoruz
+            {t.services.description}
           </p>
         </div>
         
