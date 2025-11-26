@@ -25,7 +25,7 @@ export const Navigation = () => {
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <Settings className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-foreground">Precision Gear</span>
+            <span className="text-xl font-bold text-foreground">DAYAN DİŞLİ</span>
           </div>
           
           <div className="hidden md:flex items-center gap-8">
@@ -39,6 +39,10 @@ export const Navigation = () => {
               {t.nav.contact}
             </Button>
           </div>
+{/* 🔥 Mobil Dil Seçici */}
+<div className="md:hidden flex items-center mr-3">
+  <LanguageSelector />
+</div>
 
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -48,39 +52,45 @@ export const Navigation = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[70%] bg-navy border-border">
-              <nav className="flex flex-col gap-6 mt-8">
-                <button 
-                  onClick={() => scrollToSection('services')} 
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.services}
-                </button>
-                <button 
-                  onClick={() => scrollToSection('technologies')} 
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.technologies}
-                </button>
-                <button 
-                  onClick={() => scrollToSection('products')} 
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.products}
-                </button>
-                <button 
-                  onClick={() => scrollToSection('sectors')} 
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.sectors}
-                </button>
-                <Button 
-                  onClick={() => scrollToSection('contact')} 
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
-                >
-                  {t.nav.contact}
-                </Button>
-              </nav>
-            </SheetContent>
+  <nav className="flex flex-col gap-6 mt-8">
+    <button 
+      onClick={() => scrollToSection('services')} 
+      className="text-lg text-foreground hover:text-primary transition-colors text-left"
+    >
+      {t.nav.services}
+    </button>
+
+    <button 
+      onClick={() => scrollToSection('technologies')} 
+      className="text-lg text-foreground hover:text-primary transition-colors text-left"
+    >
+      {t.nav.technologies}
+    </button>
+
+    <button 
+      onClick={() => scrollToSection('products')} 
+      className="text-lg text-foreground hover:text-primary transition-colors text-left"
+    >
+      {t.nav.products}
+    </button>
+
+    <button 
+      onClick={() => scrollToSection('sectors')} 
+      className="text-lg text-foreground hover:text-primary transition-colors text-left"
+    >
+      {t.nav.sectors}
+    </button>
+
+
+    <Button 
+      onClick={() => scrollToSection('contact')} 
+      className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
+    >
+      {t.nav.contact}
+    </Button>
+  </nav>
+</SheetContent>
+
           </Sheet>
         </div>
       </div>
