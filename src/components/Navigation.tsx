@@ -1,12 +1,17 @@
-import { Settings } from "lucide-react";
+import { Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
 
 export const Navigation = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+    setIsOpen(false);
   };
 
   return (
@@ -30,6 +35,49 @@ export const Navigation = () => {
               İletişim
             </Button>
           </div>
+
+          {/* Mobile Menu */}
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon" className="text-foreground">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[70%] bg-navy border-border">
+              <nav className="flex flex-col gap-6 mt-8">
+                <button 
+                  onClick={() => scrollToSection('services')} 
+                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                >
+                  Hizmetler
+                </button>
+                <button 
+                  onClick={() => scrollToSection('technologies')} 
+                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                >
+                  Teknolojiler
+                </button>
+                <button 
+                  onClick={() => scrollToSection('products')} 
+                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                >
+                  Ürünler
+                </button>
+                <button 
+                  onClick={() => scrollToSection('sectors')} 
+                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                >
+                  Sektörler
+                </button>
+                <Button 
+                  onClick={() => scrollToSection('contact')} 
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
+                >
+                  İletişim
+                </Button>
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>
