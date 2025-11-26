@@ -116,4 +116,8 @@ Upload /dist to hosting via FTP.
 
 📞 Support
 
+<<<<<<< HEAD
 For questions or improvements, feel free to open an Issue or send a Pull Request.
+=======
+For questions or improvements, feel free to open an Issue or send a Pull Request.
+>>>>>>> a96e57d (FLAGS)
