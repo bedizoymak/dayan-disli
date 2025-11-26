@@ -2,9 +2,12 @@ import { Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { t } = useLanguage();
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -26,13 +29,14 @@ export const Navigation = () => {
           </div>
           
           <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-foreground hover:text-primary transition-colors">Ana Sayfa</button>
-            <button onClick={() => scrollToSection('services')} className="text-foreground hover:text-primary transition-colors">Hizmetler</button>
-            <button onClick={() => scrollToSection('technologies')} className="text-foreground hover:text-primary transition-colors">Teknolojiler</button>
-            <button onClick={() => scrollToSection('products')} className="text-foreground hover:text-primary transition-colors">Ürünler</button>
-            <button onClick={() => scrollToSection('sectors')} className="text-foreground hover:text-primary transition-colors">Sektörler</button>
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-foreground hover:text-primary transition-colors">{t.nav.home}</button>
+            <button onClick={() => scrollToSection('services')} className="text-foreground hover:text-primary transition-colors">{t.nav.services}</button>
+            <button onClick={() => scrollToSection('technologies')} className="text-foreground hover:text-primary transition-colors">{t.nav.technologies}</button>
+            <button onClick={() => scrollToSection('products')} className="text-foreground hover:text-primary transition-colors">{t.nav.products}</button>
+            <button onClick={() => scrollToSection('sectors')} className="text-foreground hover:text-primary transition-colors">{t.nav.sectors}</button>
+            <LanguageSelector />
             <Button onClick={() => scrollToSection('contact')} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              İletişim
+              {t.nav.contact}
             </Button>
           </div>
 
@@ -49,31 +53,31 @@ export const Navigation = () => {
                   onClick={() => scrollToSection('services')} 
                   className="text-lg text-foreground hover:text-primary transition-colors text-left"
                 >
-                  Hizmetler
+                  {t.nav.services}
                 </button>
                 <button 
                   onClick={() => scrollToSection('technologies')} 
                   className="text-lg text-foreground hover:text-primary transition-colors text-left"
                 >
-                  Teknolojiler
+                  {t.nav.technologies}
                 </button>
                 <button 
                   onClick={() => scrollToSection('products')} 
                   className="text-lg text-foreground hover:text-primary transition-colors text-left"
                 >
-                  Ürünler
+                  {t.nav.products}
                 </button>
                 <button 
                   onClick={() => scrollToSection('sectors')} 
                   className="text-lg text-foreground hover:text-primary transition-colors text-left"
                 >
-                  Sektörler
+                  {t.nav.sectors}
                 </button>
                 <Button 
                   onClick={() => scrollToSection('contact')} 
                   className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
                 >
-                  İletişim
+                  {t.nav.contact}
                 </Button>
               </nav>
             </SheetContent>

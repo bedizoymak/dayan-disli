@@ -1,42 +1,45 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/contexts/LanguageContext";
 import techHobbing from "@/assets/tech-hobbing.jpg";
 import techCnc from "@/assets/tech-cnc.jpg";
 import techGrinding from "@/assets/tech-grinding.jpg";
 import techCmm from "@/assets/tech-cmm.jpg";
 
-const technologies = [
-  {
-    image: techHobbing,
-    title: "Gear Hobbing Makineleri",
-    specs: ["Liebherr LC 500", "Modül: 0.5-12", "Çap: Ø500mm", "DIN 4 kalite"]
-  },
-  {
-    image: techCnc,
-    title: "5 Eksen CNC İşleme",
-    specs: ["DMG MORI NTX 2000", "5 eksen eş zamanlı", "Hassasiyet: ±0.002mm", "Otomasyon sistemi"]
-  },
-  {
-    image: techGrinding,
-    title: "Dişli Taşlama",
-    specs: ["Kapp VAS 532", "DIN 5-6 kalite", "Profil taşlama", "Otomatik ölçüm"]
-  },
-  {
-    image: techCmm,
-    title: "CMM Ölçüm Sistemi",
-    specs: ["Zeiss Contura G2", "3D ölçüm", "Hassasiyet: 0.001mm", "Tam raporlama"]
-  }
-];
-
 export const Technologies = () => {
+  const { t } = useLanguage();
+  
+  const technologies = [
+    {
+      image: techHobbing,
+      title: t.technologies.gearHobbingMachines.title,
+      specs: t.technologies.gearHobbingMachines.specs
+    },
+    {
+      image: techCnc,
+      title: t.technologies.fiveAxisCnc.title,
+      specs: t.technologies.fiveAxisCnc.specs
+    },
+    {
+      image: techGrinding,
+      title: t.technologies.gearGrinding.title,
+      specs: t.technologies.gearGrinding.specs
+    },
+    {
+      image: techCmm,
+      title: t.technologies.cmmMeasurement.title,
+      specs: t.technologies.cmmMeasurement.specs
+    }
+  ];
+
   return (
     <section id="technologies" className="py-24 bg-navy">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">TEKNOLOJİLERİMİZ</p>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Son Teknoloji Makine Parkuru</h2>
+          <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">{t.technologies.title}</p>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">{t.technologies.heading}</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Dünya çapında tanınmış markaların en gelişmiş makineleriyle donatılmış üretim tesisimiz
+            {t.technologies.description}
           </p>
         </div>
         

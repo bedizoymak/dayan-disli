@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/LanguageContext";
 import sectorAutomotive from "@/assets/sector-automotive.jpg";
 import sectorDefense from "@/assets/sector-defense.jpg";
 import sectorConstruction from "@/assets/sector-construction.jpg";
@@ -6,48 +7,50 @@ import sectorMarine from "@/assets/sector-marine.jpg";
 import sectorEnergy from "@/assets/sector-energy.jpg";
 import sectorAutomation from "@/assets/sector-automation.jpg";
 
-const sectors = [
-  {
-    image: sectorAutomotive,
-    title: "Otomotiv",
-    description: "Şanzıman dişlileri, diferansiyel sistemleri ve motor komponentleri için yüksek hassasiyetli üretim"
-  },
-  {
-    image: sectorDefense,
-    title: "Savunma Sanayi",
-    description: "Askeri araçlar ve sistemler için özel tasarım, yüksek dayanıklılık ve güvenilirlik standartlarında üretim"
-  },
-  {
-    image: sectorConstruction,
-    title: "İnşaat Makineleri",
-    description: "Ekskavatör, vinç ve iş makineleri için ağır hizmet tipi dişli sistemleri"
-  },
-  {
-    image: sectorMarine,
-    title: "Denizcilik",
-    description: "Gemi tahrik sistemleri, vinç mekanizmaları ve deniz araçları için korozyona dayanıklı dişliler"
-  },
-  {
-    image: sectorEnergy,
-    title: "Enerji",
-    description: "Rüzgar türbinleri, hidroelektrik santraller ve enerji üretim sistemleri için özel çözümler"
-  },
-  {
-    image: sectorAutomation,
-    title: "Endüstriyel Otomasyon",
-    description: "Konveyör sistemleri, robotik uygulamalar ve üretim hatları için hassas dişli çözümleri"
-  }
-];
-
 export const Sectors = () => {
+  const { t } = useLanguage();
+  
+  const sectors = [
+    {
+      image: sectorAutomotive,
+      title: t.sectors.automotive.title,
+      description: t.sectors.automotive.description
+    },
+    {
+      image: sectorDefense,
+      title: t.sectors.defense.title,
+      description: t.sectors.defense.description
+    },
+    {
+      image: sectorConstruction,
+      title: t.sectors.construction.title,
+      description: t.sectors.construction.description
+    },
+    {
+      image: sectorMarine,
+      title: t.sectors.marine.title,
+      description: t.sectors.marine.description
+    },
+    {
+      image: sectorEnergy,
+      title: t.sectors.energy.title,
+      description: t.sectors.energy.description
+    },
+    {
+      image: sectorAutomation,
+      title: t.sectors.automation.title,
+      description: t.sectors.automation.description
+    }
+  ];
+
   return (
     <section id="sectors" className="py-24 bg-navy">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
-          <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">SEKTÖRLER</p>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Hizmet Verdiğimiz Sektörler</h2>
+          <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">{t.sectors.title}</p>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">{t.sectors.heading}</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Farklı endüstrilerin özel ihtiyaçlarına yönelik uzman çözümler sunuyoruz
+            {t.sectors.description}
           </p>
         </div>
         
