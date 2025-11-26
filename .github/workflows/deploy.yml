@@ -24,7 +24,7 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Deploy to FTP
+      - name: Deploy to FTP (Incremental)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -32,4 +32,15 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
           server-dir: /
+          # Incremental deploy aktif
+          dangerous-clean-slate: false
+          # Gereksiz dosyaları yükleme
+          exclude: |
+            **/*.map
+            **/node_modules/**
+            **/README.md
+            **/.gitignore
+            **/.git/**
+            **/.github/**
+
 
