@@ -51,7 +51,7 @@ export const Hero = () => {
     size="lg"
     variant="outline"
     onClick={() =>
-      document.getElementById("services")?.scrollIntoView({ behavior: "smooth" })
+      document.getElementById("products")?.scrollIntoView({ behavior: "smooth" })
     }
     className="border-border bg-secondary/50 text-foreground hover:bg-secondary"
   >
