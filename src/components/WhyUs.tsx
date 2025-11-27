@@ -74,7 +74,7 @@ export const WhyUs = () => {
                   <img 
                     src={reason.image} 
                     alt=""
-                    className="w-full h-full object-cover opacity-[0.25] group-hover:opacity-[0.35] transition-opacity duration-300"
+                    className="w-full h-full object-cover opacity-[0.38] group-hover:opacity-[0.50] transition-opacity duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-card via-card/80 to-card/60" />
                 </div>
