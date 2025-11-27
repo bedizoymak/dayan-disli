@@ -22,13 +22,17 @@ export const Navigation = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-navy/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <img 
-              src={logoNew} 
-              alt="DAYAN DİŞLİ & PROFİL TAŞLAMA" 
-              className="h-10 md:h-12 w-auto object-contain"
-            />
-          </div>
+          <button
+  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+  className="flex items-center cursor-pointer"
+>
+  <img 
+    src={logoNew} 
+    alt="DAYAN DİŞLİ & PROFİL TAŞLAMA" 
+    className="h-10 md:h-12 w-auto object-contain"
+  />
+</button>
+
           
           <div className="hidden md:flex items-center gap-8">
             <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-foreground hover:text-primary transition-colors">{t.nav.home}</button>
@@ -95,7 +99,7 @@ export const Navigation = () => {
     </button>
 
     <Button 
-      onClick={() => scrollToSection('contact')} 
+      onClick={() => scrollToSection('contact-form')} 
       className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
     >
       {t.nav.contact}
