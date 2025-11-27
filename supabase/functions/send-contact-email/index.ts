@@ -98,7 +98,7 @@ serve(async (req: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         from: "Contact Form <onboarding@resend.dev>",
-        to: ["info@cehadisli.com"],
+        to: ["bedizoymak1@gmail.com"],
         subject: "New Contact Form Submission – dayandisli.com",
         html: emailHtml,
       }),
