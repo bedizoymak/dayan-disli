@@ -7,7 +7,7 @@ export const Footer = () => {
   const { t } = useLanguage();
 
   return (
-    <footer id="contact" className="bg-navy border-t border-border">
+    <footer id="contact" className="bg-navy border-t border-border scroll-mt-20">
       <div className="container mx-auto px-6 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           {/* LEFT COLUMN - Company Info */}

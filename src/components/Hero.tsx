@@ -37,9 +37,15 @@ export const Hero = () => {
   {/* Teklif Alın */}
   <Button
     size="lg"
-    onClick={() =>
-      document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })
-    }
+    onClick={() => {
+      const element = document.getElementById("contact");
+      if (element) {
+        const headerOffset = 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+      }
+    }}
     className="bg-primary hover:bg-primary/90 text-primary-foreground"
   >
     {t.hero.getQuote}
