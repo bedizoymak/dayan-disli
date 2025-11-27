@@ -1,6 +1,12 @@
 import { Award, Clock, Users, DollarSign, HeadphonesIcon, Globe } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
+import qualityStandardsImg from "@/assets/why-us/quality-standards.jpg";
+import fastDeliveryImg from "@/assets/why-us/fast-delivery.jpg";
+import expertTeamImg from "@/assets/why-us/expert-team.jpg";
+import competitivePricesImg from "@/assets/why-us/competitive-prices.jpg";
+import afterSalesSupportImg from "@/assets/why-us/after-sales-support.jpg";
+import internationalExperienceImg from "@/assets/why-us/international-experience.jpg";
 
 export const WhyUs = () => {
   const { t } = useLanguage();
@@ -8,31 +14,37 @@ export const WhyUs = () => {
   const reasons = [
     {
       icon: Award,
+      image: qualityStandardsImg,
       title: t.whyUs.highQuality.title,
       description: t.whyUs.highQuality.description
     },
     {
       icon: Clock,
+      image: fastDeliveryImg,
       title: t.whyUs.fastDelivery.title,
       description: t.whyUs.fastDelivery.description
     },
     {
       icon: Users,
+      image: expertTeamImg,
       title: t.whyUs.expertTeam.title,
       description: t.whyUs.expertTeam.description
     },
     {
       icon: DollarSign,
+      image: competitivePricesImg,
       title: t.whyUs.competitivePrices.title,
       description: t.whyUs.competitivePrices.description
     },
     {
       icon: HeadphonesIcon,
+      image: afterSalesSupportImg,
       title: t.whyUs.afterSalesSupport.title,
       description: t.whyUs.afterSalesSupport.description
     },
     {
       icon: Globe,
+      image: internationalExperienceImg,
       title: t.whyUs.internationalExperience.title,
       description: t.whyUs.internationalExperience.description
     }
@@ -53,8 +65,22 @@ export const WhyUs = () => {
           {reasons.map((reason, index) => {
             const Icon = reason.icon;
             return (
-              <Card key={index} className="bg-card border-border hover:border-primary/50 transition-all duration-300">
-                <CardHeader>
+              <Card 
+                key={index} 
+                className="bg-card border-border hover:border-primary/50 transition-all duration-300 relative overflow-hidden group"
+              >
+                {/* Background image with subtle opacity */}
+                <div className="absolute inset-0 overflow-hidden rounded-lg">
+                  <img 
+                    src={reason.image} 
+                    alt=""
+                    className="w-full h-full object-cover opacity-[0.12] group-hover:opacity-[0.18] transition-opacity duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/80 to-card/60" />
+                </div>
+                
+                {/* Content */}
+                <CardHeader className="relative z-10">
                   <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                     <Icon className="w-6 h-6 text-primary" />
                   </div>
