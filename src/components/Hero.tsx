@@ -33,14 +33,32 @@ export const Hero = () => {
           </p>
           
           <div className="flex flex-wrap gap-4 mb-12">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              {t.hero.getQuote}
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-            <Button size="lg" variant="outline" className="border-border bg-secondary/50 text-foreground hover:bg-secondary">
-              {t.hero.ourProducts}
-            </Button>
-          </div>
+
+  {/* Teklif Alın */}
+  <Button
+    size="lg"
+    onClick={() =>
+      document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })
+    }
+    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+  >
+    {t.hero.getQuote}
+    <ArrowRight className="ml-2 w-5 h-5" />
+  </Button>
+
+  {/* Ürünlerimiz */}
+  <Button
+    size="lg"
+    variant="outline"
+    onClick={() =>
+      document.getElementById("services")?.scrollIntoView({ behavior: "smooth" })
+    }
+    className="border-border bg-secondary/50 text-foreground hover:bg-secondary"
+  >
+    {t.hero.ourProducts}
+  </Button>
+
+</div>
           
           <div className="grid grid-cols-3 gap-8 max-w-2xl">
             <div>
