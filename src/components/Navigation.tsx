@@ -57,7 +57,7 @@ export const Navigation = () => {
     <button
   onClick={() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-    setOpen(false);   // 🔥 hamburger menüyü kapatan satır
+    setIsOpen(false);   
   }}
   className="text-lg text-foreground hover:text-primary transition-colors text-left"
 >
