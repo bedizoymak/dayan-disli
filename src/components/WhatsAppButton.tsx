@@ -12,8 +12,8 @@ const WhatsAppButton = () => {
     >
 
       <svg
-        width="68"
-        height="68"
+        width="48"
+        height="48"
         viewBox="0 0 174 174"
         xmlns="http://www.w3.org/2000/svg"
       >
