@@ -53,6 +53,15 @@ export const Navigation = () => {
             </SheetTrigger>
             <SheetContent side="right" className="w-[70%] bg-navy border-border">
   <nav className="flex flex-col gap-6 mt-8">
+
+    {/* 🔵 A N A  S A Y F A  —  Eklenen satır */}
+    <button 
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      className="text-lg text-foreground hover:text-primary transition-colors text-left"
+    >
+      {t.nav.home}
+    </button>
+
     <button 
       onClick={() => scrollToSection('services')} 
       className="text-lg text-foreground hover:text-primary transition-colors text-left"
@@ -80,7 +89,6 @@ export const Navigation = () => {
     >
       {t.nav.sectors}
     </button>
-
 
     <Button 
       onClick={() => scrollToSection('contact')} 
