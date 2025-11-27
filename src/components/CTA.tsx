@@ -7,7 +7,7 @@ export const CTA = () => {
   const { t } = useLanguage();
 
   const scrollToContact = () => {
-    const element = document.getElementById("contact");
+    const element = document.getElementById("contact-form");
     if (element) {
       const headerOffset = 80;
       const elementPosition = element.getBoundingClientRect().top;

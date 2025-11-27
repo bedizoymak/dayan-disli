@@ -38,7 +38,7 @@ export const Hero = () => {
   <Button
     size="lg"
     onClick={() => {
-      const element = document.getElementById("contact");
+      const element = document.getElementById("contact-form");
       if (element) {
         const headerOffset = 80;
         const elementPosition = element.getBoundingClientRect().top;

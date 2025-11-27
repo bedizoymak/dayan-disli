@@ -75,7 +75,7 @@ export const Footer = () => {
           </div>
 
           {/* RIGHT COLUMN - Contact Form */}
-          <div>
+          <div id="contact-form" className="scroll-mt-24">
             <h2 className="text-2xl font-bold mb-6 text-foreground">{t.contactForm.heading}</h2>
             <ContactForm />
           </div>
