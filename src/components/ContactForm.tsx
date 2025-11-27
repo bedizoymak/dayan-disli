@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Send } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const ContactForm = () => {
   const { t } = useLanguage();
@@ -31,11 +32,35 @@ export const ContactForm = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.functions.invoke('send-contact-email', {
+        body: {
+          name: values.name,
+          email: values.email,
+          phone: values.phone,
+          company: values.company || "",
+          message: values.message,
+        },
+      });
+
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(error.message);
+      }
+
+      if (data?.error) {
+        console.error("Email sending error:", data.error);
+        throw new Error(data.error);
+      }
+
       toast({ title: t.contactForm.successTitle, description: t.contactForm.successDescription });
       form.reset();
-    } catch (error) {
-      toast({ title: t.contactForm.errorTitle, description: t.contactForm.errorDescription, variant: "destructive" });
+    } catch (error: any) {
+      console.error("Contact form submission error:", error);
+      toast({ 
+        title: t.contactForm.errorTitle, 
+        description: t.contactForm.errorDescription, 
+        variant: "destructive" 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -84,8 +109,17 @@ export const ContactForm = () => {
           </FormItem>
         )} />
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting}>
-          {isSubmitting ? t.contactForm.sending : t.contactForm.send}
-          <Send className="ml-2 w-4 h-4" />
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+              {t.contactForm.sending}
+            </>
+          ) : (
+            <>
+              {t.contactForm.send}
+              <Send className="ml-2 w-4 h-4" />
+            </>
+          )}
         </Button>
       </form>
     </Form>
