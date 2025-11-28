@@ -39,7 +39,7 @@ export const Footer = () => {
                 <Phone className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-1">{t.footer.phone}</h3>
-                  <p className="text-muted-foreground text-sm">+90 262 123 45 67</p>
+                  <p className="text-muted-foreground text-sm">+90 212 *** ** **</p>
                 </div>
               </div>
 
@@ -47,7 +47,7 @@ export const Footer = () => {
                 <Mail className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-1">{t.footer.email}</h3>
-                  <p className="text-muted-foreground text-sm">info@precisiongear.com</p>
+                  <p className="text-muted-foreground text-sm">info@dayandisli.com</p>
                 </div>
               </div>
             </div>
@@ -70,8 +70,9 @@ export const Footer = () => {
 
             {/* Copyright */}
             <p className="text-muted-foreground text-sm pt-4">
-              © 2024 {t.footer.company}. {t.footer.allRightsReserved}
-            </p>
+  © {new Date().getFullYear()} {t.footer.company}. {t.footer.allRightsReserved}
+</p>
+
           </div>
 
           {/* RIGHT COLUMN - Contact Form */}
