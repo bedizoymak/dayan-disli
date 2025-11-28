@@ -29,7 +29,7 @@ export const Navigation = () => {
   <img 
     src={logoNew} 
     alt="DAYAN DİŞLİ & PROFİL TAŞLAMA" 
-    className="h-10 md:h-12 w-auto object-contain"
+    className="hidden"
   />
 </button>
 
