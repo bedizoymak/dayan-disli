@@ -25,6 +25,46 @@ export const Footer = () => {
               {t.footer.companyDescription}
             </p>
 
+            
+
+            {/* Phone & Email */}
+<div className="space-y-4">
+
+  {/* Phone */}
+  <div className="flex items-start gap-3">
+    <Phone className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+    <div>
+      <h3 className="text-sm font-semibold text-foreground mb-1">
+        {t.footer.phone}
+      </h3>
+      <a
+        href="tel:+90212XXXXXXX"
+        className="text-muted-foreground text-sm hover:text-primary transition-colors"
+      >
+        +90 212 *** ** **
+      </a>
+    </div>
+  </div>
+
+  {/* Email */}
+  <div className="flex items-start gap-3">
+    <Mail className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+    <div>
+      <h3 className="text-sm font-semibold text-foreground mb-1">
+        {t.footer.email}
+      </h3>
+      <a
+        href="mailto:info@dayandisli.com"
+        className="text-muted-foreground text-sm hover:text-primary transition-colors"
+      >
+        info@dayandisli.com
+      </a>
+    </div>
+  </div>
+
+</div>
+
+
             {/* Address */}
             <div className="flex items-start gap-3">
               <MapPin className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
@@ -47,25 +87,6 @@ export const Footer = () => {
               />
             </div>
 
-            {/* Phone & Email */}
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Phone className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">{t.footer.phone}</h3>
-                  <p className="text-muted-foreground text-sm">+90 212 *** ** **</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Mail className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">{t.footer.email}</h3>
-                  <p className="text-muted-foreground text-sm">info@dayandisli.com</p>
-                </div>
-              </div>
-            </div>
-
             {/* Social Media */}
             <div className="flex gap-3 hidden">
               <Button variant="outline" size="icon" className="border-border hover:bg-secondary hover:border-primary">
@@ -82,10 +103,10 @@ export const Footer = () => {
               </Button>
             </div>
 
-            {/* Copyright */}
-            <p className="text-muted-foreground text-sm">
-              © {new Date().getFullYear()} {t.footer.company}. {t.footer.allRightsReserved}
-            </p>
+            <p className="text-muted-foreground text-sm text-center">
+  © {new Date().getFullYear()} {t.footer.company}. {t.footer.allRightsReserved}
+</p>
+
 
           </div>
 
