@@ -10,7 +10,7 @@ import {
 
 // Add customer names here - the value should match the PDF filename (without .pdf)
 const customers = [
-  { name: "Müşteri A", filename: "musteri-a" },
+  { name: "Akkuşlar Forklift", filename: "akkuslar" },
   { name: "Müşteri B", filename: "musteri-b" },
   { name: "Müşteri C", filename: "musteri-c" },
 ];
