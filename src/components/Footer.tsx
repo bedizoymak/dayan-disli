@@ -68,10 +68,23 @@ export const Footer = () => {
               </Button>
             </div>
 
+            {/* Google Maps */}
+            <div className="w-full">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3007.8073756721014!2d28.793301900000003!3d41.073203!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14caa5e0e900f119%3A0x9c66a5c0ec8f0b5d!2sİkitelli%20organize%20Sanayi%20Bölgesi!5e0!3m2!1str!2str!4v1764314980280!5m2!1str!2str"
+                width="100%"
+                className="h-[160px] md:h-[220px] rounded-xl border-0"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Dayan Dişli Location"
+              />
+            </div>
+
             {/* Copyright */}
-            <p className="text-muted-foreground text-sm pt-4">
-  © {new Date().getFullYear()} {t.footer.company}. {t.footer.allRightsReserved}
-</p>
+            <p className="text-muted-foreground text-sm">
+              © {new Date().getFullYear()} {t.footer.company}. {t.footer.allRightsReserved}
+            </p>
 
           </div>
 
