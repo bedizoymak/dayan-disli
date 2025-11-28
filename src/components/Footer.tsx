@@ -53,7 +53,7 @@ export const Footer = () => {
             </div>
 
             {/* Social Media */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 hidden">
               <Button variant="outline" size="icon" className="border-border hover:bg-secondary hover:border-primary">
                 <Linkedin className="w-4 h-4" />
               </Button>
