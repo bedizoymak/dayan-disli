@@ -1,22 +1,60 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-// Add customer names here - the value should match the PDF filename (without .pdf)
 const customers = [
-  { name: "Akkuşlar Forklift", filename: "akkuslar" },
-  { name: "Müşteri B", filename: "musteri-b" },
-  { name: "Müşteri C", filename: "musteri-c" },
+  { name: "AKKUŞLAR FORKLİFT", filename: "akkuslar" },
+  { name: "PLM GEAR GÜÇ AKTARIM SİSTEMLERİ", filename: "PLMGear" },
+  { name: "TEKNİK İSTİF MAKİNALARI", filename: "teknikistif" },
+  { name: "HMS HACILAR MAKİNA SANAYİ", filename: "HMSHacılar" },
+  { name: "HİRA PARTS", filename: "hira-parts" },
+  { name: "GÜLNAR MAKİNE", filename: "gulnar-makine" },
+  { name: "SALİH DEMİRKOL", filename: "salih-demirkol" },
+  { name: "EVREN DİŞLİ", filename: "evren-disli" },
+  { name: "TEKSAN HİDROLİK SİNCAN", filename: "teksan-hidrolik-sincan" },
+  { name: "TEKSAN HİDROLİK OSTİM", filename: "teksan-hidrolik-ostim" },
+  { name: "SUBOR (SAKARYA)", filename: "subor-sakarya" },
+  { name: "ÖRNEK MAKİNA", filename: "ornek-makina" },
+  { name: "ERMAS MÜHENDİSLİK", filename: "ermas-muhendislik" },
+  { name: "FARMATÜRK İLAÇ MAKİNALARI", filename: "farmaturk-ilac-makinalari" },
+  { name: "FIRAT HUDAY METRİK MAKİNA", filename: "firat-huday-metrik-makina" },
+  { name: "BEKEM ÖZTEKNİK", filename: "bekem-ozteknik" },
+  { name: "SABİT TAŞTEKİN", filename: "sabit-tastekin" },
+  { name: "BAREL MAKİNA", filename: "barel-makina" },
+  { name: "MET VİNÇ", filename: "met-vinc" },
+  { name: "TAVİLLER HİDROLİK", filename: "taviller-hidrolik" }
 ];
 
-const Kargo = () => {
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+// Türkçe karakterleri normalize eden fonksiyon
+function normalize(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/ı/g, "i")
+    .replace(/ç/g, "c")
+    .replace(/ş/g, "s")
+    .replace(/ğ/g, "g")
+    .replace(/ö/g, "o")
+    .replace(/ü/g, "u")
+    .replace(/İ/g, "i");
+}
+
+export default function Kargo() {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const [selectedName, setSelectedName] = useState("");
 
   const handleViewPDF = () => {
     if (!selectedCustomer) return;
@@ -24,37 +62,70 @@ const Kargo = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-6 bg-card p-8 rounded-xl shadow-lg border border-border">
-        <h1 className="text-2xl font-bold text-foreground text-center">
-          Kargo Formu Görüntüle
-        </h1>
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-6 bg-card p-8 rounded-xl shadow-lg">
+        <h1 className="text-2xl font-bold text-center">Kargo Formu Görüntüle</h1>
 
-        <div className="space-y-4">
-          <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Müşteri Seçin" />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              {customers.map((customer) => (
-                <SelectItem key={customer.filename} value={customer.filename}>
-                  {customer.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              className="w-full justify-between"
+            >
+              {selectedName || "Müşteri Seçin"}
+            </Button>
+          </PopoverTrigger>
 
-          <Button
-            onClick={handleViewPDF}
-            disabled={!selectedCustomer}
-            className="w-full"
-          >
-            View Cargo Form
-          </Button>
-        </div>
+          <PopoverContent className="w-full p-0">
+            <Command shouldFilter={false}>
+              <CommandInput
+                placeholder="Müşteri ara..."
+                onValueChange={(text) => setSearch(text)}
+              />
+              <CommandList>
+                <CommandEmpty>Müşteri bulunamadı.</CommandEmpty>
+
+                <CommandGroup>
+                  {customers
+                    .filter((c) => {
+                      const searchWords = normalize(search)
+                        .split(" ")
+                        .filter(Boolean);
+
+                      const customerName = normalize(c.name);
+
+                      return searchWords.every((word) =>
+                        customerName.includes(word)
+                      );
+                    })
+                    .map((c) => (
+                      <CommandItem
+                        key={c.filename}
+                        value={c.name}
+                        onSelect={() => {
+                          setSelectedCustomer(c.filename);
+                          setSelectedName(c.name);
+                          setOpen(false);
+                        }}
+                      >
+                        {c.name}
+                      </CommandItem>
+                    ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        <Button
+          onClick={handleViewPDF}
+          className="w-full"
+          disabled={!selectedCustomer}
+        >
+          Kargo Gönderim Formunu Görüntüle
+        </Button>
       </div>
     </div>
   );
-};
-
-export default Kargo;
+}
