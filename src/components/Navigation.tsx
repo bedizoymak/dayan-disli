@@ -22,7 +22,7 @@ export const Navigation = () => {
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
 
-          {/* ✅ LOGO (Footer ile aynı görünüm) */}
+          {/* LOGO */}
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             className="flex items-center cursor-pointer gap-3"
@@ -79,69 +79,80 @@ export const Navigation = () => {
             </Button>
           </div>
 
-          {/* Mobile Language Selector */}
-          <div className="md:hidden flex items-center mr-3">
-            <LanguageSelector />
-          </div>
+          {/* MOBILE: Hamburger + Küçültülmüş Dil Seçici */}
+          <div className="md:hidden flex items-center gap-0">
 
-          {/* Mobile Menu */}
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-foreground"
-              >
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="w-[70%] bg-navy border-border"
-            >
-              <nav className="flex flex-col gap-6 mt-8">
-                <button
-                  onClick={() => {
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                    setIsOpen(false);
-                  }}
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.home}
-                </button>
-                <button
-                  onClick={() => scrollToSection("services")}
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.services}
-                </button>
-                <button
-                  onClick={() => scrollToSection("technologies")}
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.technologies}
-                </button>
-                <button
-                  onClick={() => scrollToSection("products")}
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.products}
-                </button>
-                <button
-                  onClick={() => scrollToSection("sectors")}
-                  className="text-lg text-foreground hover:text-primary transition-colors text-left"
-                >
-                  {t.nav.sectors}
-                </button>
+            {/* Hamburger */}
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
                 <Button
-                  onClick={() => scrollToSection("contact-form")}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
+                  variant="ghost"
+                  size="icon"
+                  className="text-foreground"
                 >
-                  {t.nav.contact}
+                  <Menu className="h-6 w-6" />
                 </Button>
-              </nav>
-            </SheetContent>
-          </Sheet>
+              </SheetTrigger>
+
+              <SheetContent
+                side="right"
+                className="w-[70%] bg-navy border-border"
+              >
+                <nav className="flex flex-col gap-6 mt-8">
+                  <button
+                    onClick={() => {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                      setIsOpen(false);
+                    }}
+                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                  >
+                    {t.nav.home}
+                  </button>
+
+                  <button
+                    onClick={() => scrollToSection("services")}
+                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                  >
+                    {t.nav.services}
+                  </button>
+
+                  <button
+                    onClick={() => scrollToSection("technologies")}
+                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                  >
+                    {t.nav.technologies}
+                  </button>
+
+                  <button
+                    onClick={() => scrollToSection("products")}
+                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                  >
+                    {t.nav.products}
+                  </button>
+
+                  <button
+                    onClick={() => scrollToSection("sectors")}
+                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                  >
+                    {t.nav.sectors}
+                  </button>
+
+                  <Button
+                    onClick={() => scrollToSection("contact-form")}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground w-full"
+                  >
+                    {t.nav.contact}
+                  </Button>
+                </nav>
+              </SheetContent>
+            </Sheet>
+
+            {/* Küçültülmüş Dil Seçici */}
+            <div className="scale-[0.7] flex items-center">
+              <LanguageSelector />
+            </div>
+
+          </div>
         </div>
       </div>
     </nav>
