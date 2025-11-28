@@ -25,16 +25,30 @@ export const Footer = () => {
               {t.footer.companyDescription}
             </p>
 
-            {/* Contact Info */}
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Adres</h3>
-                  <p className="text-muted-foreground text-sm">{t.footer.address}</p>
-                </div>
+            {/* Address */}
+            <div className="flex items-start gap-3">
+              <MapPin className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-1">Adres</h3>
+                <p className="text-muted-foreground text-sm">{t.footer.address}</p>
               </div>
+            </div>
 
+            {/* Google Maps */}
+            <div className="w-full">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3007.8073756721014!2d28.793301900000003!3d41.073203!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14caa5e0e900f119%3A0x9c66a5c0ec8f0b5d!2sİkitelli%20organize%20Sanayi%20Bölgesi!5e0!3m2!1str!2str!4v1764314980280!5m2!1str!2str"
+                width="100%"
+                className="h-[160px] md:h-[220px] rounded-xl border-0"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Dayan Dişli Location"
+              />
+            </div>
+
+            {/* Phone & Email */}
+            <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <Phone className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
                 <div>
@@ -66,19 +80,6 @@ export const Footer = () => {
               <Button variant="outline" size="icon" className="border-border hover:bg-secondary hover:border-primary">
                 <Instagram className="w-4 h-4" />
               </Button>
-            </div>
-
-            {/* Google Maps */}
-            <div className="w-full">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3007.8073756721014!2d28.793301900000003!3d41.073203!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14caa5e0e900f119%3A0x9c66a5c0ec8f0b5d!2sİkitelli%20organize%20Sanayi%20Bölgesi!5e0!3m2!1str!2str!4v1764314980280!5m2!1str!2str"
-                width="100%"
-                className="h-[160px] md:h-[220px] rounded-xl border-0"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Dayan Dişli Location"
-              />
             </div>
 
             {/* Copyright */}
