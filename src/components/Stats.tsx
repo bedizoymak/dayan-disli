@@ -9,7 +9,7 @@ const stats = [
 
 export const Stats = () => {
   return (
-    <section className="py-24 bg-navy-light">
+    <section className="py-24 bg-navy-light hidden">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
           <p className="text-primary text-sm font-semibold uppercase tracking-wider mb-3">RAKAMLARLA BİZ</p>
