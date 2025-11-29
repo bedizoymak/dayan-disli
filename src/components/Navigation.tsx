@@ -30,11 +30,9 @@ export const Navigation = () => {
             <img
               src="/logo-header.png"
               alt="Dayan Dişli"
-              className="h-10 w-auto object-contain"
+              className="h-14 w-auto object-contain"
             />
-            <span className="text-xl font-bold text-foreground">
-              Dayan Dişli
-            </span>
+            
           </button>
 
           {/* Desktop Navigation */}
