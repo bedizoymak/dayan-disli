@@ -104,11 +104,6 @@ const TeklifSayfasi = () => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
   };
 
-  const generateTeklifNo = () => {
-    const year = new Date().getFullYear();
-    const random = Math.floor(1000 + Math.random() * 9000);
-    return `TR-DAYAN-${year}${random}`;
-  };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('tr-TR');
@@ -130,7 +125,14 @@ const TeklifSayfasi = () => {
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 15;
-      const teklifNo = generateTeklifNo();
+      // --- TEKLİF NUMARASI OLUŞTURMA ---
+const now = new Date();
+const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+const counterKey = `dayandisli-counter-${yyyymm}`;
+let counter = Number(localStorage.getItem(counterKey) || 1);
+const teklifNo = `TR-DAYANDISLI-${yyyymm}${String(counter).padStart(3, "0")}`;
+localStorage.setItem(counterKey, (counter + 1).toString());
+
       const today = formatDate(new Date());
       
       // Embed Roboto font for Turkish character support
@@ -338,7 +340,7 @@ const TeklifSayfasi = () => {
       doc.text("ONAY TARIHI", startX + (signBoxWidth + gap) * 2 + 2, footerY + 4);
 
       // Save PDF
-      doc.save("Teklif_" + teklifNo + ".pdf");
+      doc.save(teklifNo + ".pdf");
       
       toast({
         title: "PDF Olusturuldu",
