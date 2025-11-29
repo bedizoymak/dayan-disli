@@ -2,3 +2,6 @@ project_id = "avspgczfqsazarwzhpau"
 
 [functions.send-contact-email]
 verify_jwt = false
+
+[functions.send-quotation-email]
+verify_jwt = false
