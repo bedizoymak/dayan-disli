@@ -1,4 +1,4 @@
-import { Menu, Settings } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -27,10 +27,11 @@ export const Navigation = () => {
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             className="flex items-center cursor-pointer gap-3"
           >
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Settings className="w-6 h-6 text-primary-foreground" />
-            </div>
-
+            <img
+              src="/logo-header.png"
+              alt="Dayan Dişli"
+              className="h-10 w-auto object-contain"
+            />
             <span className="text-xl font-bold text-foreground">
               Dayan Dişli
             </span>
@@ -39,38 +40,42 @@ export const Navigation = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             <button
-              onClick={() =>
-                window.scrollTo({ top: 0, behavior: "smooth" })
-              }
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className="text-foreground hover:text-primary transition-colors"
             >
               {t.nav.home}
             </button>
+
             <button
               onClick={() => scrollToSection("services")}
               className="text-foreground hover:text-primary transition-colors"
             >
               {t.nav.services}
             </button>
+
             <button
               onClick={() => scrollToSection("technologies")}
               className="text-foreground hover:text-primary transition-colors"
             >
               {t.nav.technologies}
             </button>
+
             <button
               onClick={() => scrollToSection("products")}
               className="text-foreground hover:text-primary transition-colors"
             >
               {t.nav.products}
             </button>
+
             <button
               onClick={() => scrollToSection("sectors")}
               className="text-foreground hover:text-primary transition-colors"
             >
               {t.nav.sectors}
             </button>
+
             <LanguageSelector />
+
             <Button
               onClick={() => scrollToSection("contact")}
               className="bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -79,17 +84,13 @@ export const Navigation = () => {
             </Button>
           </div>
 
-          {/* MOBILE: Hamburger + Küçültülmüş Dil Seçici */}
+          {/* MOBILE: Hamburger + Dil Seçici */}
           <div className="md:hidden flex items-center gap-0">
 
             {/* Hamburger */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-foreground"
-                >
+                <Button variant="ghost" size="icon" className="text-foreground">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
