@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, FileDown } from "lucide-react";
+import { Plus, Trash2, FileDown, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { loadRobotoFont } from "@/lib/pdfFonts";
 
 interface ProductRow {
   id: number;
@@ -44,6 +45,37 @@ const TeklifSayfasi = () => {
   const [teslimSuresi, setTeslimSuresi] = useState("");
   const [odemeSekli, setOdemeSekli] = useState("");
   const [teslimYeri, setTeslimYeri] = useState("");
+  
+  // PDF generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [fontBase64, setFontBase64] = useState<string>("");
+  const [logoBase64, setLogoBase64] = useState<string>("");
+
+  // Load font and logo on mount
+  useEffect(() => {
+    const loadAssets = async () => {
+      // Load Roboto font
+      const font = await loadRobotoFont();
+      if (font) {
+        setFontBase64(font);
+      }
+      
+      // Load logo as base64
+      try {
+        const logoResponse = await fetch('/logo-header.png');
+        const logoBlob = await logoResponse.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setLogoBase64(reader.result as string);
+        };
+        reader.readAsDataURL(logoBlob);
+      } catch (error) {
+        console.error('Failed to load logo:', error);
+      }
+    };
+    
+    loadAssets();
+  }, []);
 
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
@@ -82,214 +114,246 @@ const TeklifSayfasi = () => {
     return date.toLocaleDateString('tr-TR');
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     if (!firma || !ilgiliKisi) {
       toast({
         title: "Eksik Bilgi",
-        description: "Lütfen firma ve ilgili kişi bilgilerini doldurun.",
+        description: "Lutfen firma ve ilgili kisi bilgilerini doldurun.",
         variant: "destructive"
       });
       return;
     }
 
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    const teklifNo = generateTeklifNo();
-    const today = formatDate(new Date());
-    
-    // Header - Logo and Company Info (Left)
-    doc.setFontSize(16);
-    doc.setTextColor(13, 59, 102); // #0D3B66
-    doc.setFont("helvetica", "bold");
-    doc.text("DAYAN DİŞLİ SANAYİ", margin, 20);
-    
-    doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    doc.setFont("helvetica", "normal");
-    doc.text("İkitelli O.S.B. Çevre Sanayi Sitesi,", margin, 26);
-    doc.text("8. Blok No: 45/47 Başakşehir / İstanbul, 34490", margin, 30);
-    doc.text("Tel: +90 536 583 74 20", margin, 34);
-    doc.text("E-mail: info@dayandisli.com", margin, 38);
-    doc.text("Web: https://dayandisli.com", margin, 42);
+    setIsGenerating(true);
 
-    // Header - Document Info Table (Right)
-    autoTable(doc, {
-      startY: 15,
-      margin: { left: pageWidth - 75 },
-      tableWidth: 60,
-      theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 1.5 },
-      headStyles: { fillColor: [13, 59, 102], textColor: 255 },
-      body: [
-        ['Teklif Tarihi', today],
-        ['Teklif No', teklifNo],
-        ['Doküman No', 'D 0060-1'],
-        ['Rev No / Tarih', '01 / ' + today],
-        ['Sayfa No', '1/1']
-      ],
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 25 },
-        1: { cellWidth: 35 }
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 15;
+      const teklifNo = generateTeklifNo();
+      const today = formatDate(new Date());
+      
+      // Embed Roboto font for Turkish character support
+      if (fontBase64) {
+        doc.addFileToVFS("Roboto-Regular.ttf", fontBase64);
+        doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+        doc.addFont("Roboto-Regular.ttf", "Roboto", "bold");
+        doc.setFont("Roboto");
       }
-    });
 
-    // Customer Info Block
-    let yPos = 50;
-    doc.setDrawColor(13, 59, 102);
-    doc.setLineWidth(0.5);
-    doc.line(margin, yPos, pageWidth - margin, yPos);
-    
-    yPos += 5;
-    doc.setFontSize(9);
-    doc.setTextColor(13, 59, 102);
-    doc.setFont("helvetica", "bold");
-    doc.text("MÜŞTERİ BİLGİLERİ", margin, yPos);
-    
-    yPos += 5;
-    doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Firma: ${firma}`, margin, yPos);
-    doc.text(`İlgili: ${ilgiliKisi}`, margin + 80, yPos);
-    yPos += 4;
-    doc.text(`Tel: ${tel}`, margin, yPos);
-    doc.text(`E-posta: ${email}`, margin + 80, yPos);
-    yPos += 4;
-    doc.text(`Konu: ${konu}`, margin, yPos);
-    doc.text("Hazırlayan: Hayrettin Dayan", margin + 80, yPos);
-
-    // Intro Text
-    yPos += 10;
-    doc.setFontSize(9);
-    doc.setTextColor(40, 40, 40);
-    doc.text(`Sayın ${ilgiliKisi},`, margin, yPos);
-    yPos += 5;
-    const introText = "Aşağıda talebiniz ve istenen şartları tanımlanmış ürünlerin/hizmetlerin sipariş teklif formudur.";
-    doc.text(introText, margin, yPos);
-    yPos += 4;
-    doc.text("İyi çalışmalar dileriz.", margin, yPos);
-    yPos += 4;
-    doc.text("Saygılarımızla,", margin, yPos);
-    yPos += 4;
-    doc.setFont("helvetica", "bold");
-    doc.text("Hayrettin DAYAN", margin, yPos);
-
-    // Product Table
-    yPos += 8;
-    const tableBody = products.map((p, idx) => [
-      (idx + 1).toString(),
-      p.kod,
-      p.cins,
-      p.malzeme,
-      p.miktar.toString(),
-      p.birim,
-      formatCurrency(p.birimFiyat),
-      formatCurrency(calculateRowTotal(p))
-    ]);
-
-    autoTable(doc, {
-      startY: yPos,
-      margin: { left: margin, right: margin },
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [13, 59, 102], textColor: 255, fontStyle: 'bold' },
-      head: [['NO', 'Ürün/Hizmet Kod', 'Ürün/Hizmet Cinsi', 'Malzeme', 'Miktar', 'Birim', 'Birim Fiyat', 'Toplam Fiyat']],
-      body: tableBody,
-      columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 40 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 15, halign: 'center' },
-        5: { cellWidth: 15, halign: 'center' },
-        6: { cellWidth: 25, halign: 'right' },
-        7: { cellWidth: 30, halign: 'right' }
+      const fontName = fontBase64 ? "Roboto" : "helvetica";
+      
+      // Add Logo (top-left)
+      const logoStartY = 10;
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", margin, logoStartY, 45, 20);
+        } catch (e) {
+          console.error('Failed to add logo to PDF:', e);
+        }
       }
-    });
+      
+      // Header - Company Info (below logo or at top if no logo)
+      const companyInfoStartY = logoBase64 ? logoStartY + 22 : 15;
+      
+      doc.setFontSize(8);
+      doc.setTextColor(60, 60, 60);
+      doc.setFont(fontName, "normal");
+      doc.text("Ikitelli O.S.B. Cevre Sanayi Sitesi,", margin, companyInfoStartY);
+      doc.text("8. Blok No: 45/47 Basaksehir / Istanbul, 34490", margin, companyInfoStartY + 4);
+      doc.text("Tel: +90 536 583 74 20", margin, companyInfoStartY + 8);
+      doc.text("E-mail: info@dayandisli.com", margin, companyInfoStartY + 12);
+      doc.text("Web: https://dayandisli.com", margin, companyInfoStartY + 16);
 
-    // Totals
-    const finalY = (doc as any).lastAutoTable.finalY + 5;
-    
-    autoTable(doc, {
-      startY: finalY,
-      margin: { left: pageWidth - 75 },
-      tableWidth: 60,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2 },
-      body: [
-        [{ content: 'TOPLAM FİYAT', styles: { fontStyle: 'bold' } }, formatCurrency(calculateSubtotal())],
-        [{ content: 'KDV %20', styles: { fontStyle: 'bold' } }, formatCurrency(calculateKDV())],
-        [{ content: 'GENEL TOPLAM', styles: { fontStyle: 'bold', fillColor: [13, 59, 102], textColor: 255 } }, 
-         { content: formatCurrency(calculateTotal()), styles: { fillColor: [13, 59, 102], textColor: 255, fontStyle: 'bold' } }]
-      ],
-      columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 30, halign: 'right' }
-      }
-    });
+      // Header - Document Info Table (Right)
+      autoTable(doc, {
+        startY: 10,
+        margin: { left: pageWidth - 75 },
+        tableWidth: 60,
+        theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 1.5, font: fontName },
+        headStyles: { fillColor: [13, 59, 102], textColor: 255, font: fontName },
+        bodyStyles: { font: fontName },
+        body: [
+          ['Teklif Tarihi', today],
+          ['Teklif No', teklifNo],
+          ['Dokuman No', 'D 0060-1'],
+          ['Rev No / Tarih', '01 / ' + today],
+          ['Sayfa No', '1/1']
+        ],
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 25 },
+          1: { cellWidth: 35 }
+        }
+      });
 
-    // Footer Fields
-    let footerY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(40, 40, 40);
+      // Customer Info Block
+      let yPos = companyInfoStartY + 25;
+      doc.setDrawColor(13, 59, 102);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      
+      yPos += 6;
+      doc.setFontSize(9);
+      doc.setTextColor(13, 59, 102);
+      doc.setFont(fontName, "bold");
+      doc.text("MUSTERI BILGILERI", margin, yPos);
+      
+      yPos += 6;
+      doc.setFontSize(8);
+      doc.setTextColor(60, 60, 60);
+      doc.setFont(fontName, "normal");
+      doc.text("Firma: " + firma, margin, yPos);
+      doc.text("Ilgili: " + ilgiliKisi, margin + 80, yPos);
+      yPos += 5;
+      doc.text("Tel: " + tel, margin, yPos);
+      doc.text("E-posta: " + email, margin + 80, yPos);
+      yPos += 5;
+      doc.text("Konu: " + konu, margin, yPos);
+      doc.text("Hazirlayan: Hayrettin Dayan", margin + 80, yPos);
 
-    const footerFields = [
-      { label: 'Notlar', value: notlar },
-      { label: 'Opsiyon', value: opsiyon },
-      { label: 'Öngörülen Teslim Süresi', value: teslimSuresi },
-      { label: 'Ödeme Şekli', value: odemeSekli },
-      { label: 'Teslim Yeri', value: teslimYeri }
-    ];
+      // Intro Text
+      yPos += 12;
+      doc.setFontSize(9);
+      doc.setTextColor(40, 40, 40);
+      doc.text("Sayin " + ilgiliKisi + ",", margin, yPos);
+      yPos += 6;
+      doc.text("Asagida talebiniz ve istenen sartlari tanimlanmis urunlerin/hizmetlerin siparis teklif formudur.", margin, yPos);
+      yPos += 5;
+      doc.text("Iyi calismalar dileriz.", margin, yPos);
+      yPos += 5;
+      doc.text("Saygilarimizla,", margin, yPos);
+      yPos += 5;
+      doc.setFont(fontName, "bold");
+      doc.text("Hayrettin DAYAN", margin, yPos);
 
-    footerFields.forEach(field => {
-      if (field.value) {
-        doc.setFont("helvetica", "bold");
-        doc.text(`${field.label}:`, margin, footerY);
-        doc.setFont("helvetica", "normal");
-        doc.text(field.value, margin + 40, footerY);
-        footerY += 5;
-      }
-    });
+      // Product Table
+      yPos += 10;
+      const tableBody = products.map((p, idx) => [
+        (idx + 1).toString(),
+        p.kod,
+        p.cins,
+        p.malzeme,
+        p.miktar.toString(),
+        p.birim,
+        formatCurrency(p.birimFiyat),
+        formatCurrency(calculateRowTotal(p))
+      ]);
 
-    // Signature Section
-    footerY += 10;
-    doc.setDrawColor(13, 59, 102);
-    doc.setLineWidth(0.3);
-    
-    const signBoxWidth = 55;
-    const signBoxHeight = 25;
-    const gap = 10;
-    const startX = margin;
+      autoTable(doc, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, font: fontName },
+        headStyles: { fillColor: [13, 59, 102], textColor: 255, fontStyle: 'bold', font: fontName },
+        bodyStyles: { font: fontName },
+        head: [['NO', 'Urun/Hizmet Kod', 'Urun/Hizmet Cinsi', 'Malzeme', 'Miktar', 'Birim', 'Birim Fiyat', 'Toplam Fiyat']],
+        body: tableBody,
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 40 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 15, halign: 'center' },
+          5: { cellWidth: 15, halign: 'center' },
+          6: { cellWidth: 25, halign: 'right' },
+          7: { cellWidth: 30, halign: 'right' }
+        }
+      });
 
-    // Box 1: Sipariş Onayı
-    doc.rect(startX, footerY, signBoxWidth, signBoxHeight);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.text("SİPARİŞ ONAYI", startX + 2, footerY + 4);
-    doc.setFont("helvetica", "normal");
-    doc.text("KAŞE - İMZA", startX + 2, footerY + signBoxHeight - 3);
+      // Totals
+      const finalY = (doc as any).lastAutoTable.finalY + 5;
+      
+      autoTable(doc, {
+        startY: finalY,
+        margin: { left: pageWidth - 75 },
+        tableWidth: 60,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 2, font: fontName },
+        bodyStyles: { font: fontName },
+        body: [
+          [{ content: 'TOPLAM FIYAT', styles: { fontStyle: 'bold' } }, formatCurrency(calculateSubtotal())],
+          [{ content: 'KDV %20', styles: { fontStyle: 'bold' } }, formatCurrency(calculateKDV())],
+          [{ content: 'GENEL TOPLAM', styles: { fontStyle: 'bold', fillColor: [13, 59, 102], textColor: 255 } }, 
+           { content: formatCurrency(calculateTotal()), styles: { fillColor: [13, 59, 102], textColor: 255, fontStyle: 'bold' } }]
+        ],
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 30, halign: 'right' }
+        }
+      });
 
-    // Box 2: Tedarikçi Onayı
-    doc.rect(startX + signBoxWidth + gap, footerY, signBoxWidth, signBoxHeight);
-    doc.setFont("helvetica", "bold");
-    doc.text("TEDARİKÇİ ONAYI", startX + signBoxWidth + gap + 2, footerY + 4);
-    doc.setFont("helvetica", "normal");
-    doc.text("KAŞE - İMZA", startX + signBoxWidth + gap + 2, footerY + signBoxHeight - 3);
+      // Footer Fields
+      let footerY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(8);
+      doc.setFont(fontName, "normal");
+      doc.setTextColor(40, 40, 40);
 
-    // Box 3: Onay Tarihi
-    doc.rect(startX + (signBoxWidth + gap) * 2, footerY, signBoxWidth, signBoxHeight);
-    doc.setFont("helvetica", "bold");
-    doc.text("ONAY TARİHİ", startX + (signBoxWidth + gap) * 2 + 2, footerY + 4);
+      const footerFields = [
+        { label: 'Notlar', value: notlar },
+        { label: 'Opsiyon', value: opsiyon },
+        { label: 'Ongorulen Teslim Suresi', value: teslimSuresi },
+        { label: 'Odeme Sekli', value: odemeSekli },
+        { label: 'Teslim Yeri', value: teslimYeri }
+      ];
 
-    // Save PDF
-    doc.save(`Teklif_${teklifNo}.pdf`);
-    
-    toast({
-      title: "PDF Oluşturuldu",
-      description: `Teklif ${teklifNo} başarıyla indirildi.`
-    });
+      footerFields.forEach(field => {
+        if (field.value) {
+          doc.setFont(fontName, "bold");
+          doc.text(field.label + ":", margin, footerY);
+          doc.setFont(fontName, "normal");
+          doc.text(field.value, margin + 45, footerY);
+          footerY += 6;
+        }
+      });
+
+      // Signature Section
+      footerY += 10;
+      doc.setDrawColor(13, 59, 102);
+      doc.setLineWidth(0.3);
+      
+      const signBoxWidth = 55;
+      const signBoxHeight = 25;
+      const gap = 10;
+      const startX = margin;
+
+      // Box 1: Siparis Onayi
+      doc.rect(startX, footerY, signBoxWidth, signBoxHeight);
+      doc.setFontSize(7);
+      doc.setFont(fontName, "bold");
+      doc.text("SIPARIS ONAYI", startX + 2, footerY + 4);
+      doc.setFont(fontName, "normal");
+      doc.text("KASE - IMZA", startX + 2, footerY + signBoxHeight - 3);
+
+      // Box 2: Tedarikci Onayi
+      doc.rect(startX + signBoxWidth + gap, footerY, signBoxWidth, signBoxHeight);
+      doc.setFont(fontName, "bold");
+      doc.text("TEDARIKCI ONAYI", startX + signBoxWidth + gap + 2, footerY + 4);
+      doc.setFont(fontName, "normal");
+      doc.text("KASE - IMZA", startX + signBoxWidth + gap + 2, footerY + signBoxHeight - 3);
+
+      // Box 3: Onay Tarihi
+      doc.rect(startX + (signBoxWidth + gap) * 2, footerY, signBoxWidth, signBoxHeight);
+      doc.setFont(fontName, "bold");
+      doc.text("ONAY TARIHI", startX + (signBoxWidth + gap) * 2 + 2, footerY + 4);
+
+      // Save PDF
+      doc.save("Teklif_" + teklifNo + ".pdf");
+      
+      toast({
+        title: "PDF Olusturuldu",
+        description: "Teklif " + teklifNo + " basariyla indirildi."
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "Hata",
+        description: "PDF olusturulurken bir hata olustu.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -520,10 +584,20 @@ const TeklifSayfasi = () => {
           <Button 
             size="lg" 
             onClick={generatePDF}
+            disabled={isGenerating}
             className="bg-[#0D3B66] hover:bg-[#0a2d4f] text-white px-8 py-6 text-lg"
           >
-            <FileDown className="w-5 h-5 mr-2" />
-            PDF Oluştur
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                PDF Olusturuluyor...
+              </>
+            ) : (
+              <>
+                <FileDown className="w-5 h-5 mr-2" />
+                PDF Olustur
+              </>
+            )}
           </Button>
         </div>
       </main>
