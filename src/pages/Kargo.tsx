@@ -19,7 +19,7 @@ const customers = [
   { name: "PLM GEAR GÜÇ AKTARIM SİSTEMLERİ", filename: "PLMGear" },
   { name: "TEKNİK İSTİF MAKİNALARI", filename: "teknikistif" },
   { name: "HMS HACILAR MAKİNA SANAYİ", filename: "HMSHacılar" },
-  { name: "HİRA PARTS", filename: "hira-parts" },
+  { name: "HIRA PARTS", filename: "hira-parts" },
   { name: "GÜLNAR MAKİNE", filename: "gulnar-makine" },
   { name: "SALİH DEMİRKOL", filename: "salih-demirkol" },
   { name: "EVREN DİŞLİ", filename: "evren-disli" },
