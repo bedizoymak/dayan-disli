@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabase";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { loadRobotoFont } from "@/lib/pdfFonts";
-import { supabase } from "@/integrations/supabase/client";
+import { incrementCounter } from "@/lib/supabaseCounter";
+
 
 interface ProductRow {
   id: number;
@@ -124,18 +126,6 @@ const TeklifSayfasi = () => {
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('tr-TR');
-  };
-
-  const generateTeklifNo = (incrementCounter: boolean = true) => {
-    const now = new Date();
-    const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const counterKey = `dayandisli-counter-${yyyymm}`;
-    let counter = Number(localStorage.getItem(counterKey) || 1);
-    const teklifNo = `TR-DAYANDISLI-${yyyymm}${String(counter).padStart(3, "0")}`;
-    if (incrementCounter) {
-      localStorage.setItem(counterKey, (counter + 1).toString());
-    }
-    return teklifNo;
   };
 
   const createPDF = (teklifNo: string): jsPDF => {
@@ -364,12 +354,15 @@ const TeklifSayfasi = () => {
     setIsGenerating(true);
 
     try {
-      const teklifNo = generateTeklifNo(true);
-      const doc = createPDF(teklifNo);
-      
-      // Save PDF
-      doc.save(teklifNo + ".pdf");
-      
+  // ✅ Sayaç arttır
+  const newCounterValue = await incrementCounter();
+  const teklifNo = `TR-DAYANDISLI-${newCounterValue}`;
+
+  // ✅ PDF oluştur (createPDF zaten sende var)
+  const doc = createPDF(teklifNo);
+
+  // ✅ PDF'yi kaydet
+  doc.save(teklifNo + ".pdf");
       toast({
         title: "PDF Olusturuldu",
         description: "Teklif " + teklifNo + " basariyla indirildi."
@@ -408,8 +401,10 @@ const TeklifSayfasi = () => {
     setIsGenerating(true);
 
     try {
-      // Generate teklif number without incrementing counter yet
-      const teklifNo = generateTeklifNo(false);
+      
+      const teklifNo = "ÖNİZLEME";
+
+
       setCurrentTeklifNo(teklifNo);
       
       const doc = createPDF(teklifNo);
@@ -465,8 +460,7 @@ const TeklifSayfasi = () => {
       const now = new Date();
       const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
       const counterKey = `dayandisli-counter-${yyyymm}`;
-      let counter = Number(localStorage.getItem(counterKey) || 1);
-      localStorage.setItem(counterKey, (counter + 1).toString());
+      localStorage.setItem(counterKey, (nowValue + 1).toString());
 
       // Email body
       const emailBody = `Sayin ilgili,
