@@ -353,30 +353,41 @@ const TeklifSayfasi = () => {
 
     setIsGenerating(true);
 
-    try {
-  // ✅ Sayaç arttır
-  const newCounterValue = await incrementCounter();
-  const teklifNo = `TR-DAYANDISLI-${newCounterValue}`;
+try {
+  // 🟦 Sayaç artır — TEKLİF NUMARASI AL
+  const { data, error } = await supabase.rpc("increment_counter");
 
-  // ✅ PDF oluştur (createPDF zaten sende var)
+  if (error || !data) {
+    console.error("Counter error:", error);
+    toast({
+      title: "Sayaç Hatası",
+      description: "Teklif numarası alınamadı!",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const teklifNo = `TR-DAYANDISLI-${data}`;
+  setCurrentTeklifNo(teklifNo);
+
+  // 🟦 PDF oluştur
   const doc = createPDF(teklifNo);
 
-  // ✅ PDF'yi kaydet
+  // 🟦 PDF indir
   doc.save(teklifNo + ".pdf");
-      toast({
-        title: "PDF Olusturuldu",
-        description: "Teklif " + teklifNo + " basariyla indirildi."
-      });
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast({
-        title: "Hata",
-        description: "PDF olusturulurken bir hata olustu.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+
+  toast({
+    title: "PDF Oluşturuldu",
+    description: `${teklifNo} başarıyla indirildi.`,
+  });
+
+} catch (e) {
+  console.error("PDF generation error:", e);
+
+} finally {
+  setIsGenerating(false);
+}
+
   };
 
   const handleEmailPreview = async () => {
