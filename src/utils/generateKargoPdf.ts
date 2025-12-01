@@ -1,43 +1,75 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
+import * as fontkit from "fontkit";
 
-export async function generateKargoPdf(data: {
-  name: string;
-  short_name: string;
-  address: string;
-  phone: string;
-}) {
+async function loadFont(pdfDoc) {
+  const url = "/fonts/Roboto-Regular.ttf";
+  const fontBytes = await fetch(url).then((res) => res.arrayBuffer());
+  return await pdfDoc.embedFont(fontBytes);
+}
+
+export async function generateKargoPdf(data) {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]); // A4
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  pdfDoc.registerFontkit(fontkit);
 
-  let y = 800;
-  const line = (text: string, size = 12, offset = 20) => {
-    page.drawText(text, { x: 50, y, size, font });
-    y -= offset;
-  };
+  const pageWidth = 842;
+  const pageHeight = 595;
+  const margin = 50;
 
-  // Başlık
-  line("Kargo Gönderim Formu", 20, 35);
+  const page = pdfDoc.addPage([pageWidth, pageHeight]);
+  const font = await loadFont(pdfDoc);
 
-  // -------------------------
-  // GÖNDERİCİ SABİT BİLGİLER
-  // -------------------------
-  line("GÖNDERİCİ ÜNVAN-ADRES:", 14, 25);
-  line("DAYAN DİŞLİ SANAYİ");
-  line("İkitelli O.S.B. Çevre Sanayi Sitesi");
-  line("8. Blok No: 45/47");
-  line("Başakşehir / İstanbul, 34490");
-  line("Telefon: 0 536 583 74 20", 12, 40);
+  // Yazılacak satırları tek listede topluyoruz
+  let lines = [
+    "KARGO GÖNDERİM FORMU",
+    "",
+    "GÖNDERİCİ ÜNVAN-ADRES:",
+    "DAYAN DİŞLİ SANAYİ",
+    "İkitelli O.S.B. Çevre Sanayi Sitesi",
+    "8. Blok No: 45/47",
+    "Başakşehir / İstanbul, 34490",
+    "Telefon: 0 536 583 74 20",
+    "",
+    "ALICI ÜNVAN-ADRES:",
+    `Alıcı: ${data.name}`,
+    `İsim: ${data.short_name}`,
+    `Adres: ${data.address}`,
+    `Telefon: ${data.phone ?? "-"}`,
+  ];
 
-  // -------------------------
-  // ALICI DİNAMİK BİLGİLER
-  // -------------------------
-  line("ALICI ÜNVAN-ADRES:", 14, 25);
+  // ---------------------------------------------------
+  // 🔥 DİNAMİK FONT BOYUTU HESAPLAMA
+  // ---------------------------------------------------
+  let fontSize = 20;      // Başlangıç (büyüğünden başla)
+  const minFontSize = 8;  // Çok küçülmesin
 
-  line(`Alıcı: ${data.name}`);
-  line(`İsim: ${data.short_name}`);
-  line(`Adres: ${data.address}`);
-  line(`Telefon: ${data.phone}`);
+  while (fontSize > minFontSize) {
+    const lineHeight = fontSize + 6;
+    const totalHeight = lines.length * lineHeight;
+
+    if (totalHeight + margin * 2 <= pageHeight) break; // Sığdı → kabul
+
+    fontSize -= 1; // Sığmadı → küçült
+  }
+
+  // Artık ideal fontSize bulundu
+  const lineHeight = fontSize + 6;
+
+  // ---------------------------------------------------
+  // 🔥 PDF'E YAZDIRMA
+  // ---------------------------------------------------
+  let x = margin;
+  let y = pageHeight - margin;
+
+  for (let text of lines) {
+    page.drawText(text, {
+      x,
+      y,
+      size: fontSize,
+      font,
+      color: rgb(0, 0, 0),
+    });
+    y -= lineHeight;
+  }
 
   return await pdfDoc.save();
 }
