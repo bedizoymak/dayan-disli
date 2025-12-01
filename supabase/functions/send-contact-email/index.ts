@@ -1,17 +1,14 @@
-// supabase/functions/send-contact-email/index.ts
-
 import { serve } from "https://deno.land/std/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
 serve(async (req) => {
-
-  // 1) OPTIONS preflight yakala
+  // Preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
     });
   }
@@ -26,13 +23,17 @@ serve(async (req) => {
       from: "DAYAN Dişli <info@dayandisli.com>",
       to: "info@dayandisli.com",
       subject: "Yeni İletişim Formu",
-      html: `<p><b>İsim:</b> ${name}</p><p><b>Email:</b> ${email}</p><p><b>Mesaj:</b> ${message}</p>`,
+      html: `
+        <p><b>İsim:</b> ${name}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Mesaj:</b> ${message}</p>
+      `,
     });
 
     return new Response(JSON.stringify({ success: true }), {
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",        // ⭐️ FIX
+        "Access-Control-Allow-Origin": "*",
       },
     });
 
@@ -41,7 +42,7 @@ serve(async (req) => {
       status: 500,
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",        // ⭐️ FIX
+        "Access-Control-Allow-Origin": "*",
       },
     });
   }
