@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -14,151 +14,139 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { supabase } from "@/lib/supabaseClient";
-
-// Türkçe karakterleri normalize eden fonksiyon (arama için)
-function normalize(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/ı/g, "i")
-    .replace(/ç/g, "c")
-    .replace(/ş/g, "s")
-    .replace(/ğ/g, "g")
-    .replace(/ö/g, "o")
-    .replace(/ü/g, "u")
-    .replace(/İ/g, "i");
-}
-
-// Müşteri ismini PDF dosya adı için slug'a çeviren fonksiyon
-// Örn: "H.M.S HACILAR MAKİNA SANAYİ" -> "hms-hacilar-makina-sanayi"
-function slugifyForPdf(name: string) {
-  return normalize(name)
-    .replace(/\./g, "") // nokta kaldır
-    .replace(/\s+/g, "-") // boşlukları - yap
-    .replace(/[^a-z0-9-]/g, ""); // kalan özel karakterleri sil
-}
+import { generateKargoPdf } from "@/utils/generateKargoPdf";
 
 type Customer = {
   id: number;
-  name: string;
+  short_name: string;
+  name?: string;
+  address?: string;
+  phone?: string;
 };
+
+// Türkçe karakter normalize
+function normalize(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u");
+}
+
+// PDF adına uygun slug üretimi
+function slugifyForPdf(text: string) {
+  return normalize(text)
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 export default function Kargo() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [selectedCustomerSlug, setSelectedCustomerSlug] = useState("");
   const [selectedName, setSelectedName] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Müşterileri Supabase'den yükle
   useEffect(() => {
     const loadCustomers = async () => {
-      setLoading(true);
-      setLoadError(null);
-
       const { data, error } = await supabase
         .from("customers_full")
-        .select("id, name")
-        .order("name", { ascending: true });
+        .select("id, short_name")
+        .order("short_name", { ascending: true });
 
-      if (error) {
-        console.error("Supabase customers_full error:", error);
-        setLoadError("Müşteri listesi yüklenirken hata oluştu.");
-        setCustomers([]);
-      } else {
-        setCustomers(data || []);
+      if (!error && data) {
+        setCustomers(data);
       }
-
-      setLoading(false);
     };
 
     loadCustomers();
   }, []);
 
-  const handleViewPDF = () => {
-    if (!selectedCustomerSlug) return;
-    window.open(`/kargolar/${selectedCustomerSlug}.pdf`, "_blank");
+  // Arama filtresi
+  const filteredCustomers = customers.filter((c) =>
+    normalize(c.short_name).includes(normalize(search))
+  );
+
+  // PDF oluşturma
+  const handleGeneratePDF = async () => {
+    if (!selectedCustomerId) return;
+
+    const { data, error } = await supabase
+      .from("customers_full")
+      .select("name, short_name, address, phone")
+      .eq("id", selectedCustomerId)
+      .single();
+
+    if (error || !data) {
+      console.error("Supabase error:", error);
+      return;
+    }
+
+    const pdfBytes = await generateKargoPdf(data);
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
   };
 
-  // Arama filtresi
-  const filteredCustomers = customers.filter((c) => {
-    if (!search.trim()) return true;
-
-    const searchWords = normalize(search)
-      .split(" ")
-      .filter(Boolean);
-
-    const customerName = normalize(c.name);
-
-    return searchWords.every((word) => customerName.includes(word));
-  });
-
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-6 bg-card p-8 rounded-xl shadow-lg">
-        <h1 className="text-2xl font-bold text-center">Kargo Formu Görüntüle</h1>
+    <div className="p-6 max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Kargo Gönderim Formu</h1>
 
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              className="w-full justify-between"
-            >
-              {selectedName || "Müşteri Seçin"}
-            </Button>
-          </PopoverTrigger>
+      {/* Müşteri Seçimi */}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="w-full justify-between">
+            {selectedName || "Müşteri Seçin"}
+          </Button>
+        </PopoverTrigger>
 
-          <PopoverContent className="w-full p-0">
-            <Command shouldFilter={false}>
-              <CommandInput
-                placeholder="Müşteri ara..."
-                onValueChange={(text) => setSearch(text)}
-              />
-              <CommandList>
-                {loading && (
-                  <CommandEmpty>Müşteriler yükleniyor...</CommandEmpty>
-                )}
+        <PopoverContent className="w-full p-0">
+          <Command>
+            <CommandInput
+              placeholder="Ara..."
+              value={search}
+              onValueChange={setSearch}
+            />
+            <CommandList>
+              <CommandEmpty>Sonuç bulunamadı.</CommandEmpty>
 
-                {!loading && loadError && (
-                  <CommandEmpty>{loadError}</CommandEmpty>
-                )}
+              <CommandGroup>
+                {filteredCustomers.map((c) => (
+                  <CommandItem
+                    key={c.id}
+                    value={c.short_name}
+                    onSelect={() => {
+                      const slug = slugifyForPdf(c.short_name);
+                      setSelectedCustomerSlug(slug);
+                      setSelectedName(c.short_name);
+                      setSelectedCustomerId(c.id);
+                      setOpen(false);
+                    }}
+                  >
+                    {c.short_name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
-                {!loading && !loadError && filteredCustomers.length === 0 && (
-                  <CommandEmpty>Müşteri bulunamadı.</CommandEmpty>
-                )}
-
-                {!loading && !loadError && filteredCustomers.length > 0 && (
-                  <CommandGroup>
-                    {filteredCustomers.map((c) => (
-                      <CommandItem
-                        key={c.id}
-                        value={c.name}
-                        onSelect={() => {
-                          const slug = slugifyForPdf(c.name);
-                          setSelectedCustomerSlug(slug);
-                          setSelectedName(c.name);
-                          setOpen(false);
-                        }}
-                      >
-                        {c.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-
-        <Button
-          onClick={handleViewPDF}
-          className="w-full"
-          disabled={!selectedCustomerSlug}
-        >
-          Kargo Gönderim Formunu Görüntüle
-        </Button>
-      </div>
+      {/* PDF Butonu */}
+      <Button
+        onClick={handleGeneratePDF}
+        className="w-full mt-4"
+        disabled={!selectedCustomerId}
+      >
+        PDF Oluştur
+      </Button>
     </div>
   );
 }
