@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -13,31 +13,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { supabase } from "@/lib/supabaseClient";
 
-const customers = [
-  { name: "AKKUŞLAR FORKLİFT", filename: "akkuslar" },
-  { name: "PLM GEAR GÜÇ AKTARIM SİSTEMLERİ", filename: "PLMGear" },
-  { name: "TEKNİK İSTİF MAKİNALARI", filename: "teknikistif" },
-  { name: "HMS HACILAR MAKİNA SANAYİ", filename: "HMSHacılar" },
-  { name: "HIRA PARTS", filename: "hira-parts" },
-  { name: "GÜLNAR MAKİNE", filename: "gulnar-makine" },
-  { name: "SALİH DEMİRKOL", filename: "salih-demirkol" },
-  { name: "EVREN DİŞLİ", filename: "evren-disli" },
-  { name: "TEKSAN HİDROLİK SİNCAN", filename: "teksan-hidrolik-sincan" },
-  { name: "TEKSAN HİDROLİK OSTİM", filename: "teksan-hidrolik-ostim" },
-  { name: "SUBOR (SAKARYA)", filename: "subor-sakarya" },
-  { name: "ÖRNEK MAKİNA", filename: "ornek-makina" },
-  { name: "ERMAS MÜHENDİSLİK", filename: "ermas-muhendislik" },
-  { name: "FARMATÜRK İLAÇ MAKİNALARI", filename: "farmaturk-ilac-makinalari" },
-  { name: "FIRAT HUDAY METRİK MAKİNA", filename: "firat-huday-metrik-makina" },
-  { name: "BEKEM ÖZTEKNİK", filename: "bekem-ozteknik" },
-  { name: "SABİT TAŞTEKİN", filename: "sabit-tastekin" },
-  { name: "BAREL MAKİNA", filename: "barel-makina" },
-  { name: "MET VİNÇ", filename: "met-vinc" },
-  { name: "TAVİLLER HİDROLİK", filename: "taviller-hidrolik" }
-];
-
-// Türkçe karakterleri normalize eden fonksiyon
+// Türkçe karakterleri normalize eden fonksiyon (arama için)
 function normalize(text: string) {
   return text
     .toLowerCase()
@@ -50,16 +28,70 @@ function normalize(text: string) {
     .replace(/İ/g, "i");
 }
 
+// Müşteri ismini PDF dosya adı için slug'a çeviren fonksiyon
+// Örn: "H.M.S HACILAR MAKİNA SANAYİ" -> "hms-hacilar-makina-sanayi"
+function slugifyForPdf(name: string) {
+  return normalize(name)
+    .replace(/\./g, "") // nokta kaldır
+    .replace(/\s+/g, "-") // boşlukları - yap
+    .replace(/[^a-z0-9-]/g, ""); // kalan özel karakterleri sil
+}
+
+type Customer = {
+  id: number;
+  name: string;
+};
+
 export default function Kargo() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const [selectedCustomerSlug, setSelectedCustomerSlug] = useState("");
   const [selectedName, setSelectedName] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadCustomers = async () => {
+      setLoading(true);
+      setLoadError(null);
+
+      const { data, error } = await supabase
+        .from("customers_full")
+        .select("id, name")
+        .order("name", { ascending: true });
+
+      if (error) {
+        console.error("Supabase customers_full error:", error);
+        setLoadError("Müşteri listesi yüklenirken hata oluştu.");
+        setCustomers([]);
+      } else {
+        setCustomers(data || []);
+      }
+
+      setLoading(false);
+    };
+
+    loadCustomers();
+  }, []);
 
   const handleViewPDF = () => {
-    if (!selectedCustomer) return;
-    window.open(`/kargolar/${selectedCustomer}.pdf`, "_blank");
+    if (!selectedCustomerSlug) return;
+    window.open(`/kargolar/${selectedCustomerSlug}.pdf`, "_blank");
   };
+
+  // Arama filtresi
+  const filteredCustomers = customers.filter((c) => {
+    if (!search.trim()) return true;
+
+    const searchWords = normalize(search)
+      .split(" ")
+      .filter(Boolean);
+
+    const customerName = normalize(c.name);
+
+    return searchWords.every((word) => customerName.includes(word));
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -84,27 +116,27 @@ export default function Kargo() {
                 onValueChange={(text) => setSearch(text)}
               />
               <CommandList>
-                <CommandEmpty>Müşteri bulunamadı.</CommandEmpty>
+                {loading && (
+                  <CommandEmpty>Müşteriler yükleniyor...</CommandEmpty>
+                )}
 
-                <CommandGroup>
-                  {customers
-                    .filter((c) => {
-                      const searchWords = normalize(search)
-                        .split(" ")
-                        .filter(Boolean);
+                {!loading && loadError && (
+                  <CommandEmpty>{loadError}</CommandEmpty>
+                )}
 
-                      const customerName = normalize(c.name);
+                {!loading && !loadError && filteredCustomers.length === 0 && (
+                  <CommandEmpty>Müşteri bulunamadı.</CommandEmpty>
+                )}
 
-                      return searchWords.every((word) =>
-                        customerName.includes(word)
-                      );
-                    })
-                    .map((c) => (
+                {!loading && !loadError && filteredCustomers.length > 0 && (
+                  <CommandGroup>
+                    {filteredCustomers.map((c) => (
                       <CommandItem
-                        key={c.filename}
+                        key={c.id}
                         value={c.name}
                         onSelect={() => {
-                          setSelectedCustomer(c.filename);
+                          const slug = slugifyForPdf(c.name);
+                          setSelectedCustomerSlug(slug);
                           setSelectedName(c.name);
                           setOpen(false);
                         }}
@@ -112,7 +144,8 @@ export default function Kargo() {
                         {c.name}
                       </CommandItem>
                     ))}
-                </CommandGroup>
+                  </CommandGroup>
+                )}
               </CommandList>
             </Command>
           </PopoverContent>
@@ -121,7 +154,7 @@ export default function Kargo() {
         <Button
           onClick={handleViewPDF}
           className="w-full"
-          disabled={!selectedCustomer}
+          disabled={!selectedCustomerSlug}
         >
           Kargo Gönderim Formunu Görüntüle
         </Button>
