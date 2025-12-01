@@ -1,44 +1,48 @@
-import { Resend } from "npm:resend";
+// supabase/functions/send-contact-email/index.ts
 
-// TEST PURPOSE: Hardcoded API key
-const resend = new Resend("re_4ZdUeyGM_PPv5RiYHZJ4h16UZqir4Trvj"); // <-- kendi key'in
+import { serve } from "https://deno.land/std/http/server.ts";
+import { Resend } from "npm:resend@2.0.0";
 
-Deno.serve(async (req) => {
+serve(async (req) => {
+
+  // 1) OPTIONS preflight yakala
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }
+
   try {
-    const { name, email, phone, company, message } = await req.json();
+    const resend = new Resend("re_4ZdUeyGM_PPv5RiYHZJ4h16UZqir4Trvj"); // <-- kendi key'in;
+    const body = await req.json();
 
-    // Internal email
+    const { name, email, message } = body;
+
     await resend.emails.send({
       from: "DAYAN Dişli <info@dayandisli.com>",
-      to: "bedizoymak1@gmail.com",
-      subject: "Yeni İletişim Formu - dayandisli.com",
-      html: `
-        <h2>Yeni İletişim Formu</h2>
-        <p><strong>İsim:</strong> ${name}</p>
-        <p><strong>E-posta:</strong> ${email}</p>
-        <p><strong>Telefon:</strong> ${phone}</p>
-        <p><strong>Firma:</strong> ${company || "-"}</p>
-        <p><strong>Mesaj:</strong></p>
-        <p>${message.replace(/\n/g, "<br/>")}</p>
-      `,
+      to: "info@dayandisli.com",
+      subject: "Yeni İletişim Formu",
+      html: `<p><b>İsim:</b> ${name}</p><p><b>Email:</b> ${email}</p><p><b>Mesaj:</b> ${message}</p>`,
     });
 
-    // Auto reply
-    await resend.emails.send({
-      from: "DAYAN Dişli <info@dayandisli.com>",
-      to: email,
-      subject: "Formunuz bize ulaştı - DAYAN Dişli",
-      html: `
-        <p>Merhaba ${name},</p>
-        <p>dayandisli.com üzerinden göndermiş olduğunuz form tarafımıza ulaşmıştır.</p>
-        <p>En kısa sürede sizinle iletişime geçeceğiz.</p>
-      `,
+    return new Response(JSON.stringify({ success: true }), {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",        // ⭐️ FIX
+      },
     });
-
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
 
   } catch (err) {
-    console.error(err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",        // ⭐️ FIX
+      },
+    });
   }
 });
