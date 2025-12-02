@@ -1,49 +1,45 @@
-import { serve } from "https://deno.land/std/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "npm:resend";
 
-serve(async (req) => {
-  // Preflight
+
+export const runtime = "edge";
+
+export default async function handler(req: Request) {
+  // PRE-FLIGHT (CORS)
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": "https://dayandisli.com",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, content-type",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
     });
   }
 
   try {
-    const resend = new Resend("re_4ZdUeyGM_PPv5RiYHZJ4h16UZqir4Trvj"); // <-- kendi key'in;
-    const body = await req.json();
+    const { name, email, message } = await req.json();
+    const resend = new Resend("re_4ZdUeyGM_PPv5RiYHZJ4h16UZqir4Trvj");
 
-    const { name, email, message } = body;
-
-    await resend.emails.send({
-      from: "DAYAN Dişli <info@dayandisli.com>",
+    const result = await resend.emails.send({
+      from: "DAYAN Contact <info@dayandisli.com>",
       to: "info@dayandisli.com",
-      subject: "Yeni İletişim Formu",
-      html: `
-        <p><b>İsim:</b> ${name}</p>
-        <p><b>Email:</b> ${email}</p>
-        <p><b>Mesaj:</b> ${message}</p>
-      `,
+      subject: "New Contact Message",
+      text: `Name: ${name}\nEmail: ${email}\nMessage: ${message}`,
     });
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify(result), {
       headers: {
+        "Access-Control-Allow-Origin": "https://dayandisli.com",
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
       },
     });
 
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (e: any) {
+    return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
       headers: {
+        "Access-Control-Allow-Origin": "https://dayandisli.com",
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
       },
     });
   }
-});
+}
