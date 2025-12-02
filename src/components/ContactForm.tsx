@@ -231,10 +231,15 @@ export const ContactForm = () => {
 
         {/* ReCAPTCHA */}
         <div
-          ref={recaptchaRef}
-          className="flex justify-center"
-          style={{ minHeight: "90px" }}
-        ></div>
+  ref={recaptchaRef}
+  className="flex justify-center w-full"
+  style={{
+    minHeight: "90px",
+    paddingTop: "10px",
+    paddingBottom: "10px",
+  }}
+></div>
+
 
         <Button
           type="submit"
