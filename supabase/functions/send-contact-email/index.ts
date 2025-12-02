@@ -1,10 +1,10 @@
 import { Resend } from "npm:resend";
 
-// Hardcoded API key (test)
+// Hardcoded for test
 const resend = new Resend("re_4ZdUeyGM_PPv5RiYHZJ4h16UZqir4Trvj");
 
 Deno.serve(async (req) => {
-  // ---------------- CORS ----------------
+  // -------------------- CORS --------------------
   const allowedOrigins = [
     "https://dayandisli.com",
     "http://localhost:8080",
@@ -17,22 +17,24 @@ Deno.serve(async (req) => {
     ? origin
     : "https://dayandisli.com";
 
-  // Preflight
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": corsOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, x-client-info, apikey",
+  };
+
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": corsOrigin,
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
+      headers: corsHeaders,
     });
   }
 
   try {
     const { name, email, phone, company, message } = await req.json();
 
-    // -------- INTERNAL EMAIL --------
+    // ------------ INTERNAL EMAIL ------------
     await resend.emails.send({
       from: "DAYAN Dişli <info@dayandisli.com>",
       to: "info@dayandisli.com",
@@ -45,36 +47,37 @@ Deno.serve(async (req) => {
         <p><strong>Firma:</strong> ${company || "-"}</p>
         <p><strong>Mesaj:</strong></p>
         <p>${message.replace(/\n/g, "<br/>")}</p>
-      `
+      `,
     });
 
-    // -------- AUTO-REPLY EMAIL --------
+    // ------------ AUTO-REPLY ------------
     await resend.emails.send({
       from: "DAYAN Dişli <info@dayandisli.com>",
       to: email,
       subject: "Formunuz bize ulaştı - DAYAN Dişli",
       html: `
         <p>Merhaba ${name},</p>
-        <p>dayandisli.com üzerinden göndermiş olduğunuz mesaj tarafımıza ulaşmıştır.</p>
+        <p>Göndermiş olduğunuz form elimize ulaştı.</p>
         <p>En kısa sürede sizinle iletişime geçeceğiz.</p>
-      `
+      `,
     });
 
+    // ------------ SUCCESS RESPONSE ------------
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: {
-        "Access-Control-Allow-Origin": corsOrigin,
-        "Content-Type": "application/json"
-      }
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
     });
 
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: {
-        "Access-Control-Allow-Origin": corsOrigin,
-        "Content-Type": "application/json"
-      }
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
     });
   }
 });
