@@ -13,13 +13,13 @@ export const Footer = () => {
           {/* LEFT COLUMN - Company Info */}
           <div className="space-y-8">
             {/* Logo and Title */}
-            <a href="/" className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
   <img
-    src="/logo.png"   // Header’da hangi dosyayı kullanıyorsan onu yaz
+    src="/logo-header.png"   // Header’da hangi dosyayı kullanıyorsan onu yaz
     alt="Dayan Dişli Logo"
-    className="h-10 w-auto"
+    className="h-16 w-auto"
   />
-</a>
+</div>
 
 
             {/* Description */}
