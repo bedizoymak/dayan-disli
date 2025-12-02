@@ -199,6 +199,10 @@ export const ContactForm = () => {
             </FormItem>
           )}
         />
+<div
+  className="g-recaptcha"
+  data-sitekey="6LcazR4sAAAAAC0F1pVHiW9c2dxh-H71U-MwBWQN"
+></div>
 
         <Button
           type="submit"
