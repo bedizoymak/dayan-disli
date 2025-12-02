@@ -22,13 +22,31 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            {/* Auth temporarily disabled - remove ProtectedRoute wrappers to re-enable */}
-            <Route path="/kargo" element={<Kargo />} />
-            <Route path="/teklif-sayfasi" element={<TeklifSayfasi />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+            {/* Protected Routes */}
+            <Route
+              path="/kargo"
+              element={
+                <ProtectedRoute>
+                  <Kargo />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/teklif-sayfasi"
+              element={
+                <ProtectedRoute>
+                  <TeklifSayfasi />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
