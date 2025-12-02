@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -21,6 +21,29 @@ export const ContactForm = () => {
   const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  // ReCAPTCHA container reference
+  const recaptchaRef = useRef<HTMLDivElement>(null);
+
+  // -----------------------------------------
+  // EXPLICIT RECAPTCHA RENDER (ÇALIŞAN KOD)
+  // -----------------------------------------
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const grecaptcha = (window as any).grecaptcha;
+
+      if (grecaptcha && recaptchaRef.current) {
+        grecaptcha.render(recaptchaRef.current, {
+          sitekey: "6LcazR4sAAAAAC0F1pVHiW9c2dxh-H71U-MwBWQN",
+        });
+
+        clearInterval(interval);
+      }
+    }, 300);
+
+    return () => clearInterval(interval);
+  }, []);
+  // -----------------------------------------
 
   const formSchema = z.object({
     name: z
@@ -70,7 +93,6 @@ export const ContactForm = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            // ★ BURASI ÇOK ÖNEMLİ → JWT doğrulaması kapalı olduğu için ANON KEY YETERLİ
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify(values),
@@ -199,10 +221,9 @@ export const ContactForm = () => {
             </FormItem>
           )}
         />
-<div
-  className="g-recaptcha"
-  data-sitekey="6LcazR4sAAAAAC0F1pVHiW9c2dxh-H71U-MwBWQN"
-></div>
+
+        {/* 🔥 RECAPTCHA BURAYA */}
+        <div ref={recaptchaRef} style={{ minHeight: "90px" }}></div>
 
         <Button
           type="submit"
