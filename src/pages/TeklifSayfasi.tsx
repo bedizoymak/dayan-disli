@@ -390,133 +390,55 @@ try {
 
   };
 
-  const handleDirectSend = async () => {
+  const handleEmailPreview = async () => {
     if (!firma || !ilgiliKisi) {
       toast({
         title: "Eksik Bilgi",
-        description: "Lütfen firma ve ilgili kişi bilgilerini doldurun.",
+        description: "Lutfen firma ve ilgili kisi bilgilerini doldurun.",
         variant: "destructive"
       });
       return;
     }
 
-    setIsSendingEmail(true);
+    if (!email) {
+      toast({
+        title: "Eksik Bilgi",
+        description: "Lutfen musteri e-posta adresini doldurun.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGenerating(true);
 
     try {
-      // Get counter for teklif number
-      const { data: counterData, error: counterError } = await supabase.rpc("increment_counter");
-
-      if (counterError || !counterData) {
-        console.error("Counter error:", counterError);
-        toast({
-          title: "Sayaç Hatası",
-          description: "Teklif numarası alınamadı!",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const teklifNo = `TR-DAYANDISLI-${counterData}`;
       
-      // Create PDF
+      const teklifNo = "ÖNİZLEME";
+
+
+      setCurrentTeklifNo(teklifNo);
+      
       const doc = createPDF(teklifNo);
-      const pdfOutput = doc.output('blob');
       
-      // Convert to base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-      });
-      reader.readAsDataURL(pdfOutput);
-      const pdfBase64 = await base64Promise;
-
-      // Build email body with all form fields
-      const emailBody = `
-<h2>Yeni Teklif - ${teklifNo}</h2>
-
-<h3>Müşteri Bilgileri:</h3>
-<ul>
-  <li><strong>Firma:</strong> ${firma || "-"}</li>
-  <li><strong>İlgili Kişi:</strong> ${ilgiliKisi || "-"}</li>
-  <li><strong>Telefon:</strong> ${tel || "-"}</li>
-  <li><strong>E-posta:</strong> ${email || "-"}</li>
-  <li><strong>Konu:</strong> ${konu || "-"}</li>
-</ul>
-
-<h3>Ürünler:</h3>
-<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse;">
-  <tr style="background-color: #0D3B66; color: white;">
-    <th>No</th>
-    <th>Kod</th>
-    <th>Cinsi</th>
-    <th>Malzeme</th>
-    <th>Miktar</th>
-    <th>Birim</th>
-    <th>Birim Fiyat</th>
-    <th>Toplam</th>
-  </tr>
-  ${products.map((p, idx) => `
-  <tr>
-    <td>${idx + 1}</td>
-    <td>${p.kod || "-"}</td>
-    <td>${p.cins || "-"}</td>
-    <td>${p.malzeme}</td>
-    <td>${p.miktar}</td>
-    <td>${p.birim}</td>
-    <td>${formatCurrency(p.birimFiyat)}</td>
-    <td>${formatCurrency(calculateRowTotal(p))}</td>
-  </tr>
-  `).join('')}
-</table>
-
-<h3>Toplam:</h3>
-<ul>
-  <li><strong>Ara Toplam:</strong> ${formatCurrency(calculateSubtotal())}</li>
-  <li><strong>KDV (%20):</strong> ${formatCurrency(calculateKDV())}</li>
-  <li><strong>Genel Toplam:</strong> ${formatCurrency(calculateTotal())}</li>
-</ul>
-
-<h3>Ek Bilgiler:</h3>
-<ul>
-  <li><strong>Notlar:</strong> ${notlar || "-"}</li>
-  <li><strong>Opsiyon:</strong> ${opsiyon || "-"}</li>
-  <li><strong>Teslim Süresi:</strong> ${teslimSuresi || "-"}</li>
-  <li><strong>Ödeme Şekli:</strong> ${odemeSekli || "-"}</li>
-  <li><strong>Teslim Yeri:</strong> ${teslimYeri || "-"}</li>
-</ul>
-`;
-
-      // Send email
-      const { data, error } = await supabase.functions.invoke("send-quotation-email", {
-        body: {
-          to: "info@dayandisli.com",
-          subject: "Yeni Teklif",
-          body: emailBody,
-          pdfBase64,
-          filename: `${teklifNo}.pdf`,
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Başarılı!",
-        description: "Teklif başarıyla e-posta olarak gönderildi.",
-      });
-
-    } catch (error: any) {
-      console.error("Email sending error:", error);
+      // Get PDF as blob for preview
+      const pdfOutput = doc.output('blob');
+      setPdfBlob(pdfOutput);
+      
+      // Create URL for preview
+      const previewUrl = URL.createObjectURL(pdfOutput);
+      setPdfPreviewUrl(previewUrl);
+      
+      // Show modal
+      setShowEmailModal(true);
+    } catch (error) {
+      console.error('PDF preview error:', error);
       toast({
         title: "Hata",
-        description: "E-posta gönderilemedi: " + (error.message || "Bilinmeyen hata"),
+        description: "PDF onizleme olusturulurken bir hata olustu.",
         variant: "destructive"
       });
     } finally {
-      setIsSendingEmail(false);
+      setIsGenerating(false);
     }
   };
 
@@ -562,18 +484,23 @@ Dayan Dişli Sanayi
 
     // 2) MAIL GÖNDERME KODU (BURAYA KOYUYORSUN)
     const { data, error } = await supabase.functions.invoke(
-      "send-quotation-email",
-      {
-        body: {
-          to: email,
-          cc: "bediz@dayandisli.com",
-          subject: `${currentTeklifNo}'lu Fiyat Teklifimiz`,
-          body: emailBody,
-          pdfBase64,
-          filename: `${currentTeklifNo}.pdf`,
-        }
-      }
-    );
+  "send-quotation-email",
+  {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: {
+      to: email,
+      from: "info@dayandisli.com",
+      subject: `${currentTeklifNo}'lu Fiyat Teklifimiz`,
+      text: emailBody,
+      fileBase64: pdfBase64,
+      fileName: `${currentTeklifNo}.pdf`,
+    },
+  }
+);
+
+
 
     if (error) throw error;
 
@@ -847,19 +774,19 @@ Dayan Dişli Sanayi
           
           <Button 
             size="lg" 
-            onClick={handleDirectSend}
-            disabled={isSendingEmail || isGenerating}
+            onClick={handleEmailPreview}
+            disabled={isGenerating}
             className="bg-green-600 hover:bg-green-700 text-white px-8 py-6 text-lg"
           >
-            {isSendingEmail ? (
+            {isGenerating ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Gönderiliyor...
+                Hazirlaniyor...
               </>
             ) : (
               <>
-                <Send className="w-5 h-5 mr-2" />
-                Gönder
+                <Mail className="w-5 h-5 mr-2" />
+                PDF'i Mail At
               </>
             )}
           </Button>

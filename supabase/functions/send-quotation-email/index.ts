@@ -1,87 +1,46 @@
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { Resend } from "npm:resend";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey",
 };
 
-Deno.serve(async (req) => {
+serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { to, subject, body, pdfBase64, filename } = await req.json();
+    // FIX: 'from' alanını da alıyoruz
+    const { to, from, subject, text, fileName, fileBase64 } = await req.json();
 
-    console.log("Received request:", { to, subject, filename });
+    const resend = new Resend(Deno.env.get("RESEND_API_KEY")!);
 
-    if (!to || !subject || !pdfBase64) {
-      console.error("Missing required fields:", { to: !!to, subject: !!subject, pdfBase64: !!pdfBase64 });
-      return new Response(JSON.stringify({ error: "Missing fields" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const apiKey = Deno.env.get("RESEND_API_KEY");
-    if (!apiKey) {
-      console.error("Missing RESEND_API_KEY");
-      return new Response(
-        JSON.stringify({ error: "Missing RESEND_API_KEY secret" }),
+    const response = await resend.emails.send({
+      to,
+      from,             // ❗ artık undefined değil → 401 gider
+      subject,
+      text,
+      attachments: [
         {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    console.log("Sending email via Resend API...");
-
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Dayan Dişli <info@dayandisli.com>",
-        to: [to],
-        subject,
-        html: `<div style="font-family: Arial, sans-serif; line-height: 1.6;">${body}</div>`,
-        attachments: [
-          {
-            filename,
-            content: pdfBase64,
-          },
-        ],
-      }),
+          filename: fileName,
+          content: fileBase64,
+          encoding: "base64",
+        },
+      ],
     });
 
-    const result = await response.json();
-    console.log("Resend response:", result);
+    return new Response(JSON.stringify({ success: true, response }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
-    if (!response.ok) {
-      console.error("Resend error:", result);
-      return new Response(JSON.stringify({ error: result }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, messageId: result.id }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  } catch (err) {
-    console.error("Edge function error:", err);
-    return new Response(
-      JSON.stringify({ error: (err as Error).toString() }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
