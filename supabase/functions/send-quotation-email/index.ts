@@ -1,19 +1,12 @@
-import { Resend } from "npm:resend";
-
-export const config = {
-  runtime: "edge",
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-export default async (req: Request) => {
-  // CORS: Preflight (OPTIONS)
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
-    });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -22,67 +15,70 @@ export default async (req: Request) => {
     if (!to || !subject || !pdfBase64) {
       return new Response(JSON.stringify({ error: "Missing fields" }), {
         status: 400,
-        headers: { "Access-Control-Allow-Origin": "*" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get Resend API Key from Supabase Secrets
     const apiKey = Deno.env.get("RESEND_API_KEY");
     if (!apiKey) {
       return new Response(
         JSON.stringify({ error: "Missing RESEND_API_KEY secret" }),
         {
           status: 500,
-          headers: { "Access-Control-Allow-Origin": "*" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
-    const resend = new Resend(apiKey);
-
-    // Send email via Resend
-    const result = await resend.emails.send({
+    const emailPayload: Record<string, unknown> = {
       from: "Dayan Dişli <info@dayandisli.com>",
       to: [to],
-      cc: cc ? [cc] : undefined,
       subject,
-      html: `
-        <p>${body.replace(/\n/g, "<br>")}</p>
-        <p>Saygılarımla,<br><strong>Hayrettin Dayan</strong></p>
-      `,
+      html: `<p>${body.replace(/\n/g, "<br>")}</p><p>Saygılarımla,<br><strong>Hayrettin Dayan</strong></p>`,
       attachments: [
         {
           filename,
           content: pdfBase64,
-          encoding: "base64",
         },
       ],
+    };
+
+    if (cc) {
+      emailPayload.cc = [cc];
+    }
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(emailPayload),
     });
 
-    if (result.error) {
-      return new Response(JSON.stringify({ error: result.error }), {
+    const result = await response.json();
+
+    if (!response.ok) {
+      return new Response(JSON.stringify({ error: result }), {
         status: 500,
-        headers: { "Access-Control-Allow-Origin": "*" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        messageId: result.data?.id,
-      }),
+      JSON.stringify({ success: true, messageId: result.id }),
       {
         status: 200,
-        headers: { "Access-Control-Allow-Origin": "*" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (err) {
     return new Response(
-      JSON.stringify({ error: err.toString() }),
+      JSON.stringify({ error: (err as Error).toString() }),
       {
         status: 500,
-        headers: { "Access-Control-Allow-Origin": "*" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   }
-};
+});

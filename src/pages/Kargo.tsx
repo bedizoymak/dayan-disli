@@ -13,7 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/integrations/supabase/client";
 import { generateKargoPdf } from "@/utils/generateKargoPdf";
 
 type Customer = {
@@ -24,7 +24,6 @@ type Customer = {
   phone?: string;
 };
 
-// Türkçe karakter normalize
 function normalize(text: string) {
   return text
     .toLowerCase()
@@ -36,7 +35,6 @@ function normalize(text: string) {
     .replace(/ü/g, "u");
 }
 
-// PDF adına uygun slug üretimi
 function slugifyForPdf(text: string) {
   return normalize(text)
     .replace(/\s+/g, "-")
@@ -49,37 +47,34 @@ export default function Kargo() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
-  const [selectedCustomerSlug, setSelectedCustomerSlug] = useState("");
+  const [, setSelectedCustomerSlug] = useState("");
   const [selectedName, setSelectedName] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
 
-  // Müşterileri Supabase'den yükle
   useEffect(() => {
     const loadCustomers = async () => {
       const { data, error } = await supabase
-        .from("customers_full")
+        .from("customers_full" as never)
         .select("id, short_name")
         .order("short_name", { ascending: true });
 
       if (!error && data) {
-        setCustomers(data);
+        setCustomers(data as unknown as Customer[]);
       }
     };
 
     loadCustomers();
   }, []);
 
-  // Arama filtresi
   const filteredCustomers = customers.filter((c) =>
     normalize(c.short_name).includes(normalize(search))
   );
 
-  // PDF oluşturma
   const handleGeneratePDF = async () => {
     if (!selectedCustomerId) return;
 
     const { data, error } = await supabase
-      .from("customers_full")
+      .from("customers_full" as never)
       .select("name, short_name, address, phone")
       .eq("id", selectedCustomerId)
       .single();
@@ -89,8 +84,9 @@ export default function Kargo() {
       return;
     }
 
-    const pdfBytes = await generateKargoPdf(data);
-    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const customerData = data as unknown as { name: string; short_name: string; address: string; phone?: string };
+    const pdfBytes = await generateKargoPdf(customerData);
+    const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
   };
@@ -99,7 +95,6 @@ export default function Kargo() {
     <div className="p-6 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Kargo Gönderim Formu</h1>
 
-      {/* Müşteri Seçimi */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" className="w-full justify-between">
@@ -139,7 +134,6 @@ export default function Kargo() {
         </PopoverContent>
       </Popover>
 
-      {/* PDF Butonu */}
       <Button
         onClick={handleGeneratePDF}
         className="w-full mt-4"

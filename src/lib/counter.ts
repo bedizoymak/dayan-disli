@@ -1,6 +1,8 @@
-export async function incrementCounter() {
+import { supabase } from "@/integrations/supabase/client";
+
+export async function incrementCounter(): Promise<number | null> {
   const { data, error } = await supabase
-    .from("counter")
+    .from("counter" as never)
     .select("value")
     .eq("id", 1)
     .single();
@@ -10,11 +12,14 @@ export async function incrementCounter() {
     return null;
   }
 
-  const newValue = data.value + 1;
+  const currentData = data as { value: number } | null;
+  if (!currentData) return null;
+  
+  const newValue = currentData.value + 1;
 
   const { error: updateError } = await supabase
-    .from("counter")
-    .update({ value: newValue })
+    .from("counter" as never)
+    .update({ value: newValue } as never)
     .eq("id", 1);
 
   if (updateError) {
