@@ -24,12 +24,10 @@ export const ContactForm = () => {
 
   const recaptchaRef = useRef<HTMLDivElement>(null);
 
-  // 🔥 WIDGET ID STATE (EKSİK OLAN BUYDU)
+  // 🔥 WIDGET ID STATE
   const [widgetId, setWidgetId] = useState<number | null>(null);
 
-  // ------------------------------------------------
-  // EXPLICIT RENDER + WIDGET ID YAKALAMA
-  // ------------------------------------------------
+  // 🔥 EXPLICIT RENDER + widgetId yakalama
   useEffect(() => {
     const interval = setInterval(() => {
       const grecaptcha = (window as any).grecaptcha;
@@ -39,9 +37,7 @@ export const ContactForm = () => {
           sitekey: "6LcazR4sAAAAAC0F1pVHiW9c2dxh-H71U-MwBWQN",
         });
 
-        // 🔥 WIDGET ID BURADA SET EDİLİYOR
         setWidgetId(id);
-
         clearInterval(interval);
       }
     }, 300);
@@ -49,30 +45,13 @@ export const ContactForm = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // ------------------------------------------------
-  // FORM SCHEMA
-  // ------------------------------------------------
+  // Validation schema
   const formSchema = z.object({
-    name: z
-      .string()
-      .trim()
-      .min(2, { message: t.contactForm.validation.nameMin })
-      .max(50, { message: t.contactForm.validation.nameMax }),
-    email: z
-      .string()
-      .trim()
-      .email({ message: t.contactForm.validation.emailInvalid }),
-    phone: z
-      .string()
-      .trim()
-      .min(10, { message: t.contactForm.validation.phoneMin })
-      .max(20, { message: t.contactForm.validation.phoneMax }),
+    name: z.string().trim().min(2).max(50),
+    email: z.string().trim().email(),
+    phone: z.string().trim().min(10).max(20),
     company: z.string().trim().max(100).optional(),
-    message: z
-      .string()
-      .trim()
-      .min(10, { message: t.contactForm.validation.messageMin })
-      .max(1000, { message: t.contactForm.validation.messageMax }),
+    message: z.string().trim().min(10).max(1000),
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -86,9 +65,6 @@ export const ContactForm = () => {
     },
   });
 
-  // ------------------------------------------------
-  // SUBMIT
-  // ------------------------------------------------
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
 
@@ -103,7 +79,7 @@ export const ContactForm = () => {
         return;
       }
 
-      // 🔥 TOKEN ARTIK DOĞRU İNSTANCE'TAN ALINIYOR
+      // 🔥 TOKEN DOĞRU INSTANCE'TAN ALINIYOR
       const token = (window as any).grecaptcha.getResponse(widgetId);
 
       if (!token) {
@@ -126,7 +102,7 @@ export const ContactForm = () => {
           },
           body: JSON.stringify({
             ...values,
-            token,
+            token: token,
           }),
         }
       );
@@ -146,7 +122,6 @@ export const ContactForm = () => {
       (window as any).grecaptcha.reset(widgetId);
     } catch (err) {
       console.error("Contact form submission error:", err);
-
       toast({
         title: t.contactForm.errorTitle,
         description: t.contactForm.errorDescription,
@@ -187,7 +162,6 @@ export const ContactForm = () => {
                 <FormLabel>{t.contactForm.email}</FormLabel>
                 <FormControl>
                   <Input
-                    type="email"
                     placeholder={t.contactForm.emailPlaceholder}
                     className="bg-navy-lighter border-border"
                     {...field}
@@ -255,7 +229,7 @@ export const ContactForm = () => {
           )}
         />
 
-        {/* 🔥 RECAPTCHA */}
+        {/* ReCAPTCHA */}
         <div
           ref={recaptchaRef}
           className="flex justify-center"
