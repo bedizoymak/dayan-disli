@@ -4,7 +4,6 @@ import { Resend } from "npm:resend";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY")!);
 console.log(">>> RESEND SECRET:", Deno.env.get("RESEND_API_KEY"));
 
-
 Deno.serve(async (req) => {
   // -------------------- CORS --------------------
   const allowedOrigins = [
@@ -34,9 +33,62 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { name, email, phone, company, message } = await req.json();
+    // ------------------------------
+    // 🟦 1) FORM VERİSİNİ AL
+    // ------------------------------
+    const { name, email, phone, company, message, token } = await req.json();
 
-    // ------------ INTERNAL EMAIL ------------
+    // ------------------------------
+    // 🟧 2) TOKEN GELMİŞ Mİ?
+    // ------------------------------
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: "reCAPTCHA token missing" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // ------------------------------
+    // 🟩 3) GOOGLE RECAPTCHA VERIFY
+    // ------------------------------
+    const secret = Deno.env.get("RECAPTCHA_SECRET_KEY");
+
+    const verifyRes = await fetch(
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        body: new URLSearchParams({
+          secret,
+          response: token,
+        }),
+      }
+    );
+
+    const verifyData = await verifyRes.json();
+
+    console.log(">>> reCAPTCHA RESULT:", verifyData);
+
+    // ------------------------------
+    // 🟥 4) DOĞRULAMA BAŞARISIZSA
+    // ------------------------------
+    if (!verifyData.success) {
+      return new Response(
+        JSON.stringify({
+          error: "reCAPTCHA doğrulanamadı. İşlem iptal edildi.",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // ------------------------------
+    // 🟦 5) MAIL GÖNDER (BAŞARILI)
+    // ------------------------------
     await resend.emails.send({
       from: "DAYAN Dişli <info@dayandisli.com>",
       to: "info@dayandisli.com",
@@ -64,7 +116,6 @@ Deno.serve(async (req) => {
       `,
     });
 
-    // ------------ SUCCESS RESPONSE ------------
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: {
