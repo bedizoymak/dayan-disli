@@ -22,20 +22,25 @@ export const ContactForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  // ReCAPTCHA container reference
   const recaptchaRef = useRef<HTMLDivElement>(null);
 
-  // -----------------------------------------
-  // EXPLICIT RECAPTCHA RENDER (ÇALIŞAN KOD)
-  // -----------------------------------------
+  // 🔥 WIDGET ID STATE (EKSİK OLAN BUYDU)
+  const [widgetId, setWidgetId] = useState<number | null>(null);
+
+  // ------------------------------------------------
+  // EXPLICIT RENDER + WIDGET ID YAKALAMA
+  // ------------------------------------------------
   useEffect(() => {
     const interval = setInterval(() => {
       const grecaptcha = (window as any).grecaptcha;
 
       if (grecaptcha && recaptchaRef.current) {
-        grecaptcha.render(recaptchaRef.current, {
+        const id = grecaptcha.render(recaptchaRef.current, {
           sitekey: "6LcazR4sAAAAAC0F1pVHiW9c2dxh-H71U-MwBWQN",
         });
+
+        // 🔥 WIDGET ID BURADA SET EDİLİYOR
+        setWidgetId(id);
 
         clearInterval(interval);
       }
@@ -43,8 +48,10 @@ export const ContactForm = () => {
 
     return () => clearInterval(interval);
   }, []);
-  // -----------------------------------------
 
+  // ------------------------------------------------
+  // FORM SCHEMA
+  // ------------------------------------------------
   const formSchema = z.object({
     name: z
       .string()
@@ -60,11 +67,7 @@ export const ContactForm = () => {
       .trim()
       .min(10, { message: t.contactForm.validation.phoneMin })
       .max(20, { message: t.contactForm.validation.phoneMax }),
-    company: z
-      .string()
-      .trim()
-      .max(100, { message: t.contactForm.validation.companyMax })
-      .optional(),
+    company: z.string().trim().max(100).optional(),
     message: z
       .string()
       .trim()
@@ -83,66 +86,76 @@ export const ContactForm = () => {
     },
   });
 
+  // ------------------------------------------------
+  // SUBMIT
+  // ------------------------------------------------
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    // reCAPTCHA TOKEN AL
-    const token = (window as any).grecaptcha.getResponse();
+    try {
+      if (widgetId === null) {
+        toast({
+          title: "reCAPTCHA yüklenemedi",
+          description: "Lütfen sayfayı yenileyin.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
-    if (!token) {
+      // 🔥 TOKEN ARTIK DOĞRU İNSTANCE'TAN ALINIYOR
+      const token = (window as any).grecaptcha.getResponse(widgetId);
+
+      if (!token) {
+        toast({
+          title: "reCAPTCHA doğrulanmadı",
+          description: "Lütfen robot olmadığınızı doğrulayın.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const response = await fetch(
+        "https://phyzkkobmihhsbcryygl.supabase.co/functions/v1/send-contact-email",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            ...values,
+            token,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Unknown error");
+      }
+
       toast({
-        title: "reCAPTCHA doğrulanmadı",
-        description: "Lütfen robot olmadığınızı doğrulayın.",
+        title: t.contactForm.successTitle,
+        description: t.contactForm.successDescription,
+      });
+
+      form.reset();
+      (window as any).grecaptcha.reset(widgetId);
+    } catch (err) {
+      console.error("Contact form submission error:", err);
+
+      toast({
+        title: t.contactForm.errorTitle,
+        description: t.contactForm.errorDescription,
         variant: "destructive",
       });
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    // BACKEND'E TOKEN İLE BİRLİKTE GÖNDER
-    const response = await fetch(
-      "https://phyzkkobmihhsbcryygl.supabase.co/functions/v1/send-contact-email",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          ...values,
-          token: token,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.error || "Unknown error");
-    }
-
-    toast({
-      title: t.contactForm.successTitle,
-      description: t.contactForm.successDescription,
-    });
-
-    form.reset();
-    (window as any).grecaptcha.reset(); // reCAPTCHA sıfırla
-
-  } catch (err) {
-    console.error("Contact form submission error:", err);
-
-    toast({
-      title: t.contactForm.errorTitle,
-      description: t.contactForm.errorDescription,
-      variant: "destructive",
-    });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
+  };
 
   return (
     <Form {...form}>
@@ -242,13 +255,12 @@ export const ContactForm = () => {
           )}
         />
 
-        {/* 🔥 RECAPTCHA BURAYA */}
+        {/* 🔥 RECAPTCHA */}
         <div
-  ref={recaptchaRef}
-  className="flex justify-center"
-  style={{ minHeight: "90px" }}
-></div>
-
+          ref={recaptchaRef}
+          className="flex justify-center"
+          style={{ minHeight: "90px" }}
+        ></div>
 
         <Button
           type="submit"
