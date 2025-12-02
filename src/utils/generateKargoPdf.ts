@@ -1,13 +1,29 @@
-import { PDFDocument, rgb } from "pdf-lib";
-import * as fontkit from "fontkit";
+import { PDFDocument, rgb, PDFFont } from "pdf-lib";
+import fontkit from "fontkit";
 
-async function loadFont(pdfDoc, file) {
+type CustomerData = {
+  name: string;
+  short_name: string;
+  address: string;
+  phone?: string;
+};
+
+type LinePart = {
+  text: string;
+  bold?: boolean;
+};
+
+type Line = {
+  parts: LinePart[];
+};
+
+async function loadFont(pdfDoc: PDFDocument, file: string): Promise<PDFFont> {
   const url = `/fonts/${file}`;
   const fontBytes = await fetch(url).then(res => res.arrayBuffer());
   return await pdfDoc.embedFont(fontBytes);
 }
 
-export async function generateKargoPdf(data) {
+export async function generateKargoPdf(data: CustomerData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
 
@@ -22,13 +38,12 @@ export async function generateKargoPdf(data) {
 
   // --- MAIN TITLE ---
   const titleText = "KARGO GÖNDERİM FORMU";
-  const titleFontSize = 28; // her zaman büyük
+  const titleFontSize = 28;
 
   const titleWidth = boldFont.widthOfTextAtSize(titleText, titleFontSize);
   const titleX = (pageWidth - titleWidth) / 2;
   let y = pageHeight - margin;
 
-  // Centered + Bold
   page.drawText(titleText, {
     x: titleX,
     y,
@@ -37,11 +52,9 @@ export async function generateKargoPdf(data) {
     color: rgb(0, 0, 0),
   });
 
-  // Title ile içerik arasında boşluk
   y -= titleFontSize + 20;
 
-  // --- KALAN TEXT SATIRLARI ---
-  const lines = [
+  const lines: Line[] = [
     { parts: [{ text: "GÖNDERİCİ ÜNVAN-ADRES:", bold: true }] },
     { parts: [{ text: "DAYAN DİŞLİ SANAYİ" }] },
     { parts: [{ text: "İkitelli O.S.B. Çevre Sanayi Sitesi" }] },
@@ -83,7 +96,6 @@ export async function generateKargoPdf(data) {
     },
   ];
 
-  // Dinamik font (title hariç)
   let fontSize = 18;
   const minFontSize = 8;
 
@@ -97,19 +109,20 @@ export async function generateKargoPdf(data) {
 
   const lineHeight = fontSize + 6;
 
-  // Yazdırma
   for (const line of lines) {
     let x = margin;
 
     for (const p of line.parts) {
       const txt = p.text ?? "";
-      const textWidth = (p.bold ? boldFont : regularFont).widthOfTextAtSize(txt, fontSize);
+      const isBold = p.bold === true;
+      const font = isBold ? boldFont : regularFont;
+      const textWidth = font.widthOfTextAtSize(txt, fontSize);
 
       page.drawText(txt, {
         x,
         y,
         size: fontSize,
-        font: p.bold ? boldFont : regularFont,
+        font,
         color: rgb(0, 0, 0),
       });
 

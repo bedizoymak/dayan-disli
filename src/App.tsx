@@ -8,6 +8,9 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Kargo from "./pages/Kargo";
 import TeklifSayfasi from "./pages/TeklifSayfasi";
+import Login from "./pages/Login";
+import AuthCallback from "./pages/AuthCallback";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -20,8 +23,24 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/kargo" element={<Kargo />} />
-            <Route path="/teklif-sayfasi" element={<TeklifSayfasi />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route
+              path="/kargo"
+              element={
+                <ProtectedRoute>
+                  <Kargo />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/teklif-sayfasi"
+              element={
+                <ProtectedRoute>
+                  <TeklifSayfasi />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
