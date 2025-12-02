@@ -1,5 +1,5 @@
 import { PDFDocument, rgb, PDFFont } from "pdf-lib";
-import fontkit from "fontkit";
+import * as fontkit from "fontkit";
 
 type CustomerData = {
   name: string;
