@@ -443,91 +443,71 @@ try {
   };
 
   const handleSendEmail = async () => {
-    if (!pdfBlob || !currentTeklifNo) {
-      toast({
-        title: "Hata",
-        description: "PDF olusturulamadi.",
-        variant: "destructive"
-      });
-      return;
-    }
+  if (!pdfBlob || !currentTeklifNo) {
+    toast({
+      title: "Hata",
+      description: "PDF olusturulamadi.",
+      variant: "destructive"
+    });
+    return;
+  }
 
-    setIsSendingEmail(true);
+  setIsSendingEmail(true);
 
-    try {
-      // Convert blob to base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-      });
-      reader.readAsDataURL(pdfBlob);
-      const pdfBase64 = await base64Promise;
+  try {
+    // 1) PDF → base64'e çevir
+    const reader = new FileReader();
+    const base64Promise = new Promise<string>((resolve, reject) => {
+      reader.onloadend = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
 
-      // Now increment the counter since we're actually sending
-      const now = new Date();
-      const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const counterKey = `dayandisli-counter-${yyyymm}`;
-      localStorage.setItem(counterKey, (nowValue + 1).toString());
+    reader.readAsDataURL(pdfBlob);
+    const pdfBase64 = await base64Promise;
 
-      // Email body
-      const emailBody = `Sayin ilgili,
-
-Asagida talebiniz ve istenen sartlari tanimlanmis urunlerin/hizmetlerin siparis teklif formudur.
-
-Iyi calismalar dileriz.
-Saygilarimizla,
-Hayrettin DAYAN`;
-
-      // Send email via edge function
-      const { data, error } = await supabase.functions.invoke('send-quotation-email', {
+    // 2) MAIL GÖNDERME KODU (BURAYA KOYUYORSUN)
+    const { data, error } = await supabase.functions.invoke(
+      "send-quotation-email",
+      {
         body: {
           to: email,
           cc: "bediz@dayandisli.com",
           subject: `${currentTeklifNo}'lu Fiyat Teklifimiz`,
           body: emailBody,
-          pdfBase64: pdfBase64,
-          filename: `${currentTeklifNo}.pdf`
+          pdfBase64,
+          filename: `${currentTeklifNo}.pdf`,
         }
-      });
+      }
+    );
 
-      if (error) throw error;
+    if (error) throw error;
 
-      toast({
-        title: "Basarili",
-        description: "Teklif basariyla e-posta olarak gonderildi."
-      });
+    toast({
+      title: "Başarılı!",
+      description: "Teklif başarıyla e-posta olarak gönderildi.",
+    });
 
-      // Close modal
-      setShowEmailModal(false);
-      setPdfPreviewUrl("");
-      setPdfBlob(null);
-      setCurrentTeklifNo("");
-
-    } catch (error: any) {
-      console.error('Email sending error:', error);
-      toast({
-        title: "Hata",
-        description: "E-posta gonderilemedi: " + (error.message || "Bilinmeyen hata"),
-        variant: "destructive"
-      });
-    } finally {
-      setIsSendingEmail(false);
-    }
-  };
-
-  const handleCloseModal = () => {
+    // modal kapat
     setShowEmailModal(false);
-    if (pdfPreviewUrl) {
-      URL.revokeObjectURL(pdfPreviewUrl);
-    }
     setPdfPreviewUrl("");
     setPdfBlob(null);
     setCurrentTeklifNo("");
-  };
+
+  } catch (error: any) {
+    console.error("Email sending error:", error);
+    toast({
+      title: "Hata",
+      description: "E-posta gönderilemedi: " + (error.message || "Bilinmeyen hata"),
+      variant: "destructive"
+    });
+  } finally {
+    setIsSendingEmail(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50">

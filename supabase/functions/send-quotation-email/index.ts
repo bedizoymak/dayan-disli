@@ -1,79 +1,61 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { Resend } from "npm:resend";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+export const config = {
+  runtime: "edge",
 };
 
-interface QuotationEmailRequest {
-  to: string;
-  cc: string;
-  subject: string;
-  body: string;
-  pdfBase64: string;
-  filename: string;
-}
-
-serve(async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
+export default async (req: Request) => {
   try {
-    const { to, cc, subject, body, pdfBase64, filename }: QuotationEmailRequest = await req.json();
+    const { to, cc, subject, body, pdfBase64, filename } = await req.json();
 
-    console.log("Sending quotation email to:", to, "CC:", cc, "Subject:", subject, "Filename:", filename);
+    if (!to || !subject || !pdfBase64) {
+      return new Response(JSON.stringify({ error: "Missing fields" }), {
+        status: 400,
+      });
+    }
 
-    // Validate required fields
-    if (!to || !subject || !pdfBase64 || !filename) {
+    const apiKey = Deno.env.get("RESEND_API_KEY");
+    if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ error: "Missing RESEND_API_KEY secret" }),
+        { status: 500 }
       );
     }
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "Dayan Disli Sanayi <onboarding@resend.dev>",
-        to: [to],
-        cc: cc ? [cc] : [],
-        subject: subject,
-        text: body,
-        attachments: [
-          {
-            filename: filename,
-            content: pdfBase64,
-          },
-        ],
-      }),
+    const resend = new Resend(apiKey);
+
+    const result = await resend.emails.send({
+      from: "Dayan Dişli <info@dayandisli.com>",
+      to: [to],
+      cc: cc ? [cc] : undefined,
+      subject,
+      html: `
+        <p>${body.replace(/\n/g, "<br>")}</p>
+        <p>Saygılarımla,<br><strong>Hayrettin Dayan</strong></p>
+      `,
+      attachments: [
+        {
+          filename,
+          content: pdfBase64,
+          encoding: "base64",
+        },
+      ],
     });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error("Resend API error:", data);
-      throw new Error(data.message || "Failed to send email");
+    if (result.error) {
+      return new Response(JSON.stringify({ error: result.error }), {
+        status: 500,
+      });
     }
 
-    console.log("Quotation email sent successfully:", data);
-
-    return new Response(JSON.stringify({ success: true, data }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
-  } catch (error: any) {
-    console.error("Error in send-quotation-email function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      JSON.stringify({ success: true, messageId: result.data?.id }),
+      { status: 200 }
+    );
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ error: err.toString() }),
+      { status: 500 }
     );
   }
-});
+};
