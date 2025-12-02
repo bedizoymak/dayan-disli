@@ -1,32 +1,57 @@
-// src/pages/AuthCallback.tsx
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/integrations/supabase/client";
+import { isEmailAllowed } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
+    const handleRedirect = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token");
+      if (!user) {
+        toast({
+          title: "Giriş Başarısız",
+          description: "Kullanıcı bilgisi alınamadı.",
+          variant: "destructive",
+        });
+        navigate("/login", { replace: true });
+        return;
+      }
 
-    if (!access_token) {
-      console.error("No access token found in callback.");
-      navigate("/login");
-      return;
-    }
+      // Whitelist kontrolü
+      if (!isEmailAllowed(user.email)) {
+        toast({
+          title: "Yetkisiz Giriş",
+          description: "Bu email sistemde yetkili değil.",
+          variant: "destructive",
+        });
+        await supabase.auth.signOut();
+        navigate("/", { replace: true });
+        return;
+      }
 
-    // Supabase session restore
-    supabase.auth.setSession({
-      access_token,
-      refresh_token: refresh_token ?? undefined
-    });
+      // 🔥 Daha önce ProtectedRoute tarafından kaydedilen rota
+      const redirectPath = localStorage.getItem("auth_redirect_path") || "/";
 
-    navigate("/"); // ✔ Login sonrası yönlendirme
-  }, [navigate]);
+      // Bir kere kullandıktan sonra sil
+      localStorage.removeItem("auth_redirect_path");
 
-  return <div>Giriş yapılıyor, lütfen bekleyin...</div>;
+      // Yönlendir
+      navigate(redirectPath, { replace: true });
+    };
+
+    handleRedirect();
+  }, [navigate, toast]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  );
 }
