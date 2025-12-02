@@ -443,6 +443,20 @@ try {
   };
 
   const handleSendEmail = async () => {
+const emailBody = `
+Sayın ${ilgiliKisi || ""},
+
+Ek’te ${currentTeklifNo} numaralı fiyat teklifimizi bulabilirsiniz.
+
+Firma: ${firma || "-"}
+Konu: ${konu || "-"}
+
+Saygılarımla,
+Hayrettin Dayan
+Dayan Dişli Sanayi
+`;
+
+
   if (!pdfBlob || !currentTeklifNo) {
     toast({
       title: "Hata",
