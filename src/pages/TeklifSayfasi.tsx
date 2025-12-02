@@ -787,7 +787,7 @@ try {
       </footer>
 
       {/* Email Preview Modal */}
-      <Dialog open={showEmailModal} onOpenChange={handleCloseModal}>
+      <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -821,7 +821,7 @@ try {
           <DialogFooter className="gap-2">
             <Button 
               variant="outline" 
-              onClick={handleCloseModal}
+              onClick={() => setShowEmailModal(false)}
               disabled={isSendingEmail}
             >
               <X className="w-4 h-4 mr-2" />
