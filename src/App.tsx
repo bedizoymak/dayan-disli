@@ -25,22 +25,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route
-              path="/kargo"
-              element={
-                <ProtectedRoute>
-                  <Kargo />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teklif-sayfasi"
-              element={
-                <ProtectedRoute>
-                  <TeklifSayfasi />
-                </ProtectedRoute>
-              }
-            />
+            {/* Auth temporarily disabled - remove ProtectedRoute wrappers to re-enable */}
+            <Route path="/kargo" element={<Kargo />} />
+            <Route path="/teklif-sayfasi" element={<TeklifSayfasi />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
