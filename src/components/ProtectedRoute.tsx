@@ -11,41 +11,47 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAllowed, setIsAllowed] = useState(false);
+
   const location = useLocation();
 
   useEffect(() => {
-    // Store the intended destination for after auth
-    localStorage.setItem("auth_redirect_path", location.pathname);
-    
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user) {
         setIsAuthenticated(true);
         setIsAllowed(isEmailAllowed(user.email));
       } else {
         setIsAuthenticated(false);
         setIsAllowed(false);
+
+        // Store redirect **only when user is NOT authenticated**
+        localStorage.setItem("auth_redirect_path", location.pathname);
       }
+
       setLoading(false);
     };
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setIsAuthenticated(true);
-        setIsAllowed(isEmailAllowed(session.user.email));
-      } else {
-        setIsAuthenticated(false);
-        setIsAllowed(false);
+    // Listen to login/logout events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session?.user) {
+          setIsAuthenticated(true);
+          setIsAllowed(isEmailAllowed(session.user.email));
+        } else {
+          setIsAuthenticated(false);
+          setIsAllowed(false);
+        }
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [location.pathname]);
 
+  // LOADING SPINNER
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -54,13 +60,22 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
+  // NOT AUTHENTICATED → LOGIN PAGE
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location.pathname }}
+        replace
+      />
+    );
   }
 
+  // AUTHENTICATED BUT NOT ALLOWED (EMAIL WHITELIST OUTSIDE) → HOME
   if (!isAllowed) {
     return <Navigate to="/" replace />;
   }
 
+  // FULL ACCESS
   return <>{children}</>;
 }
