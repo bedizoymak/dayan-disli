@@ -443,7 +443,40 @@ try {
   };
 
   const handleSendEmail = async () => {
-const emailBody = `
+  if (!email) {
+    toast({
+      title: "Hata",
+      description: "Müşteri e-posta adresi boş olamaz.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (!pdfBlob || !currentTeklifNo) {
+    toast({
+      title: "Hata",
+      description: "PDF oluşturulamadı.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsSendingEmail(true);
+
+  try {
+    // PDF → Base64
+    const reader = new FileReader();
+    const pdfBase64 = await new Promise<string>((resolve, reject) => {
+      reader.onloadend = () => {
+        const base64 = (reader.result as string).split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(pdfBlob);
+    });
+
+    // E-posta metni
+    const emailBody = `
 Sayın ${ilgiliKisi || ""},
 
 Ek’te ${currentTeklifNo} numaralı fiyat teklifimizi bulabilirsiniz.
@@ -456,76 +489,57 @@ Hayrettin Dayan
 Dayan Dişli Sanayi
 `;
 
+    // Supabase Edge Function çağrısı
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-quotation-email`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          to: email,
+          from: "info@dayandisli.com",
+          subject: `${currentTeklifNo}'lu Fiyat Teklifimiz`,
+          text: emailBody,
+          fileBase64: pdfBase64,
+          fileName: `${currentTeklifNo}.pdf`,
+        }),
+      }
+    );
 
-  if (!pdfBlob || !currentTeklifNo) {
-    toast({
-      title: "Hata",
-      description: "PDF olusturulamadi.",
-      variant: "destructive"
-    });
-    return;
-  }
+    const data = await response.json();
 
-  setIsSendingEmail(true);
-
-  try {
-    // 1) PDF → base64'e çevir
-    const reader = new FileReader();
-    const base64Promise = new Promise<string>((resolve, reject) => {
-      reader.onloadend = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-    });
-
-    reader.readAsDataURL(pdfBlob);
-    const pdfBase64 = await base64Promise;
-
-    // 2) MAIL GÖNDERME KODU (BURAYA KOYUYORSUN)
-    const { data, error } = await supabase.functions.invoke(
-  "send-quotation-email",
-  {
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: {
-      to: email,
-      from: "info@dayandisli.com",
-      subject: `${currentTeklifNo}'lu Fiyat Teklifimiz`,
-      text: emailBody,
-      fileBase64: pdfBase64,
-      fileName: `${currentTeklifNo}.pdf`,
-    },
-  }
-);
-
-
-
-    if (error) throw error;
+    if (!response.ok) {
+      console.error("Function returned error:", data);
+      throw new Error(data.error || "Function error");
+    }
 
     toast({
       title: "Başarılı!",
       description: "Teklif başarıyla e-posta olarak gönderildi.",
     });
 
-    // modal kapat
+    // Modal kapat
     setShowEmailModal(false);
     setPdfPreviewUrl("");
     setPdfBlob(null);
     setCurrentTeklifNo("");
 
-  } catch (error: any) {
-    console.error("Email sending error:", error);
+  } catch (err: any) {
+    console.error("Email sending error:", err);
     toast({
       title: "Hata",
-      description: "E-posta gönderilemedi: " + (error.message || "Bilinmeyen hata"),
-      variant: "destructive"
+      description: `E-posta gönderilemedi: ${err.message || "Bilinmeyen hata"}`,
+      variant: "destructive",
     });
   } finally {
     setIsSendingEmail(false);
   }
 };
+
 
 
   return (
