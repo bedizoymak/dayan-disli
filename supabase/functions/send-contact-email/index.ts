@@ -1,7 +1,9 @@
 import { Resend } from "npm:resend";
 
-// Hardcoded for test
-const resend = new Resend("re_4ZdUeyGM_PPv5RiYHZJ4h16UZqir4Trvj");
+// ⭐ RESEND SECRET → Supabase Dashboard'dan okunuyor
+const resend = new Resend(Deno.env.get("RESEND_API_KEY")!);
+console.log(">>> RESEND SECRET:", Deno.env.get("RESEND_API_KEY"));
+
 
 Deno.serve(async (req) => {
   // -------------------- CORS --------------------
@@ -9,7 +11,7 @@ Deno.serve(async (req) => {
     "https://dayandisli.com",
     "http://localhost:8080",
     "http://localhost:3000",
-    "http://localhost:5173"
+    "http://localhost:5173",
   ];
 
   const origin = req.headers.get("origin") || "";
@@ -20,10 +22,10 @@ Deno.serve(async (req) => {
   const corsHeaders = {
     "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers":
-      "Content-Type, Authorization, x-client-info, apikey",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };
 
+  // OPTIONS REQUEST
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       status: 200,
