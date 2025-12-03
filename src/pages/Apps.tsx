@@ -16,7 +16,14 @@ const apps = [
     route: "/teklif-sayfasi",
     icon: FileText,
   },
+  {
+    title: "DAYAN CALCULATOR",
+    description: "Dişli hesaplama ve üretim reçetesi oluşturma",
+    route: "/apps/calculator",
+    icon: FileText,
+  },
 ];
+
 
 export default function Apps() {
   const navigate = useNavigate();
