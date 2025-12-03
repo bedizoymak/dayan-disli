@@ -545,7 +545,7 @@ www.dayandisli.com<br>
           to: email,
           from: "info@dayandisli.com",
           subject: `${currentTeklifNo}'lu Fiyat Teklifimiz`,
-          html: emailHTML,
+          html: emailHtml,
           fileBase64: pdfBase64,
           fileName: `${currentTeklifNo}.pdf`,
         }),
