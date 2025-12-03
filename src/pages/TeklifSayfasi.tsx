@@ -61,6 +61,7 @@ const TeklifSayfasi = () => {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>("");
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [currentTeklifNo, setCurrentTeklifNo] = useState("");
+  const [productChanged, setProductChanged] = useState(false);
 
   // Load font and logo on mount
   useEffect(() => {
@@ -100,11 +101,13 @@ const TeklifSayfasi = () => {
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
     setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0 }]);
+    setProductChanged(true);
   };
 
   const removeRow = (id: number) => {
     if (products.length > 1) {
       setProducts(products.filter(p => p.id !== id));
+      setProductChanged(true);
     }
   };
 
@@ -396,6 +399,7 @@ setCurrentTeklifNo(teklifNo);
 
 } finally {
   setIsGenerating(false);
+  setProductChanged(false);
 }
 
   };
@@ -650,7 +654,10 @@ Dayan Dişli Sanayi
                     <td className="py-2 px-2">
                       <Input 
                         value={product.kod} 
-                        onChange={(e) => updateProduct(product.id, 'kod', e.target.value)}
+                        onChange={(e) => {
+                          setProductChanged(true);
+                          updateProduct(product.id, 'kod', e.target.value);
+                        }}
                         placeholder="Kod"
                         className="h-9"
                       />
@@ -658,13 +665,19 @@ Dayan Dişli Sanayi
                     <td className="py-2 px-2">
                       <Input 
                         value={product.cins} 
-                        onChange={(e) => updateProduct(product.id, 'cins', e.target.value)}
+                        onChange={(e) => {
+                          setProductChanged(true);
+                          updateProduct(product.id, 'cins', e.target.value);
+                        }}
                         placeholder="Açıklama"
                         className="h-9"
                       />
                     </td>
                     <td className="py-2 px-2">
-                      <Select value={product.malzeme} onValueChange={(v) => updateProduct(product.id, 'malzeme', v)}>
+                      <Select value={product.malzeme} onValueChange={(v) => {
+                        setProductChanged(true);
+                        updateProduct(product.id, 'malzeme', v);
+                      }}>
                         <SelectTrigger className="h-9">
                           <SelectValue />
                         </SelectTrigger>
@@ -680,12 +693,18 @@ Dayan Dişli Sanayi
                         type="number" 
                         min="1"
                         value={product.miktar} 
-                        onChange={(e) => updateProduct(product.id, 'miktar', parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          setProductChanged(true);
+                          updateProduct(product.id, 'miktar', parseInt(e.target.value) || 0);
+                        }}
                         className="h-9 w-20"
                       />
                     </td>
                     <td className="py-2 px-2">
-                      <Select value={product.birim} onValueChange={(v) => updateProduct(product.id, 'birim', v)}>
+                      <Select value={product.birim} onValueChange={(v) => {
+                        setProductChanged(true);
+                        updateProduct(product.id, 'birim', v);
+                        }}>
                         <SelectTrigger className="h-9 w-24">
                           <SelectValue />
                         </SelectTrigger>
@@ -702,7 +721,10 @@ Dayan Dişli Sanayi
                         min="0"
                         step="0.01"
                         value={product.birimFiyat} 
-                        onChange={(e) => updateProduct(product.id, 'birimFiyat', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          setProductChanged(true);
+                          updateProduct(product.id, 'birimFiyat', parseFloat(e.target.value) || 0);
+                        }}
                         className="h-9 w-28"
                       />
                     </td>
@@ -787,7 +809,7 @@ Dayan Dişli Sanayi
           <Button 
             size="lg" 
             onClick={generatePDF}
-            disabled={isGenerating}
+            disabled={!productChanged || isGenerating}
             className="bg-[#0D3B66] hover:bg-[#0a2d4f] text-white px-8 py-6 text-lg"
           >
             {isGenerating ? (
