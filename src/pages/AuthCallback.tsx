@@ -36,8 +36,8 @@ export default function AuthCallback() {
         return;
       }
 
-      const redirectPath =
-        localStorage.getItem("auth_redirect_path") || "/apps";
+      const redirectPath = "/apps";
+
 
       localStorage.removeItem("auth_redirect_path");
 
