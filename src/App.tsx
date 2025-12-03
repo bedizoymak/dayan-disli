@@ -4,16 +4,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Kargo from "./pages/Kargo";
-import TeklifSayfasi from "./pages/TeklifSayfasi";
 import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
-import Apps from "./pages/Apps";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { CalculatorRoutes } from "./calculator";
+import NotFound from "./pages/NotFound";
 
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import Apps from "./pages/Apps";
+import Kargo from "./pages/Kargo";
+import TeklifSayfasi from "./pages/TeklifSayfasi";
+import { CalculatorRoutes } from "./calculator";
 
 const queryClient = new QueryClient();
 
@@ -25,42 +27,30 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Public Routes */}
+
+            {/* 🔓 Public Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* Protected Routes */}
+            {/* 🔒 Tüm diğer rotalar otomatik private */}
             <Route
-              path="/apps"
+              path="/*"
               element={
                 <ProtectedRoute>
-                  <Apps />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/kargo"
-              element={
-                <ProtectedRoute>
-                  <Kargo />
+                  <Routes>
+                    <Route path="apps" element={<Apps />} />
+                    <Route path="apps/calculator/*" element={<CalculatorRoutes />} />
+                    <Route path="kargo" element={<Kargo />} />
+                    <Route path="teklif-sayfasi" element={<TeklifSayfasi />} />
+
+                    {/* Yeni private sayfa eklersen sadece buraya eklemen yeterli */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
                 </ProtectedRoute>
               }
             />
 
-            <Route
-              path="/teklif-sayfasi"
-              element={
-                <ProtectedRoute>
-                  <TeklifSayfasi />
-                </ProtectedRoute>
-              }
-            />
-{/* Calculator Sub-App (Public) */}
-        <Route path="/apps/calculator/*" element={<CalculatorRoutes />} />
-
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
