@@ -355,7 +355,8 @@ const TeklifSayfasi = () => {
 
 try {
   // 🟦 Sayaç artır — TEKLİF NUMARASI AL
-  const { data, error } = await supabase.rpc("increment_counter");
+  const { data, error } = await supabase.rpc("increment_monthly_counter");
+
 
   if (error || !data) {
     console.error("Counter error:", error);
