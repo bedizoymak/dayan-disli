@@ -28,7 +28,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       }
 
       // Whitelist kontrolü
-      const { data, error } = await supabase.rpc("is_email_allowed", {
+      const { data, error } = await (supabase.rpc as any)("is_email_allowed", {
         check_email: session.user.email,
       });
 

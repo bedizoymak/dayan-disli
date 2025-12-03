@@ -90,7 +90,7 @@ export default function Kargo() {
     }
 
     const pdfBytes = await generateKargoPdf(data);
-    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
   };
