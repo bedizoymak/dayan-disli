@@ -21,7 +21,7 @@ export default function AuthCallback() {
         return;
       }
 
-      const { data } = await supabase.rpc("is_email_allowed", {
+      const { data } = await (supabase.rpc as any)("is_email_allowed", {
         check_email: session.user.email,
       });
 
@@ -37,7 +37,7 @@ export default function AuthCallback() {
       }
 
       const redirectPath =
-        localStorage.getItem("auth_redirect_path") || "/";
+        localStorage.getItem("auth_redirect_path") || "/apps";
 
       localStorage.removeItem("auth_redirect_path");
 

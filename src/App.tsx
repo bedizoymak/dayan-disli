@@ -10,6 +10,7 @@ import Kargo from "./pages/Kargo";
 import TeklifSayfasi from "./pages/TeklifSayfasi";
 import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
+import Apps from "./pages/Apps";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,14 @@ const App = () => (
             <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Protected Routes */}
+            <Route
+              path="/apps"
+              element={
+                <ProtectedRoute>
+                  <Apps />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/kargo"
               element={
