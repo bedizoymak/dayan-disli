@@ -439,7 +439,7 @@ setCurrentTeklifNo(teklifNo);
       throw new Error("Sayaç bilgisi alınamadı");
     }
 
-    const currentCounter = counterData.value;
+    const currentCounter = counterData.value + 1;
     const yil = new Date().getFullYear();
     const ay = String(new Date().getMonth() + 1).padStart(2, "0");
     const sayi = String(currentCounter).padStart(3, "0");
