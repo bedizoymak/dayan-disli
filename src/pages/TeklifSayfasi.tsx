@@ -367,8 +367,17 @@ try {
     return;
   }
 
-  const teklifNo = `TR-DAYANDISLI-${data}`;
-  setCurrentTeklifNo(teklifNo);
+  // Sayaç → 3 haneli format (001, 002, 003…)
+const formattedCounter = String(data).padStart(3, "0");
+
+// Yıl + Ay → yyyymm formatı
+const now = new Date();
+const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+// Final Teklif No (UI + PDF + E-posta)
+const teklifNo = `TR-DAYAN-${yearMonth}${formattedCounter}`;
+setCurrentTeklifNo(teklifNo);
+
 
   // 🟦 PDF oluştur
   const doc = createPDF(teklifNo);
@@ -564,7 +573,17 @@ Dayan Dişli Sanayi
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+            <main className="container mx-auto px-4 py-8 max-w-6xl">
+        {currentTeklifNo && (
+          <div className="mb-4 text-xl font-bold text-primary border-l-4 border-primary pl-3">
+            Teklif No: {currentTeklifNo}
+          </div>
+        )}
+
+        {/* Customer Information */}
+        <Card className="mb-6">
+
+        
         {/* Customer Information */}
         <Card className="mb-6">
           <CardHeader className="bg-[#0D3B66] text-white rounded-t-lg">
