@@ -1,41 +1,12 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const from = (location.state as { from?: string })?.from || "/";
-
-  // 🔥 Oturum varsa backend whitelist kontrolü yap
-  useEffect(() => {
-    const checkExistingSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session?.user?.email) {
-        const { data } = await supabase.rpc("is_email_allowed", {
-          check_email: session.user.email,
-        });
-
-        if (data === true) {
-          navigate(from, { replace: true });
-        } else {
-          await supabase.auth.signOut();
-          navigate("/", { replace: true });
-        }
-      }
-    };
-
-    checkExistingSession();
-  }, [navigate, from]);
-
-
-  // 🔥 Redirect URL
   const getRedirectURL = () => {
     const isLocal = window.location.hostname === "localhost";
     return isLocal
@@ -43,8 +14,6 @@ export default function Login() {
       : "https://dayandisli.com/auth/callback";
   };
 
-
-  // 🔥 Sadece Google login
   const handleGoogleLogin = async () => {
     setLoading(true);
 
@@ -74,12 +43,9 @@ export default function Login() {
     }
   };
 
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl">
-
-        {/* Logo */}
         <div className="flex justify-center mb-8">
           <img
             src="/logo-header.png"
@@ -92,7 +58,6 @@ export default function Login() {
           Giriş Yap
         </h1>
 
-        {/* Google Login */}
         <Button
           onClick={handleGoogleLogin}
           disabled={loading}

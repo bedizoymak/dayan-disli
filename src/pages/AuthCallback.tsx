@@ -9,9 +9,7 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleRedirect = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user?.email) {
         toast({
@@ -23,7 +21,6 @@ export default function AuthCallback() {
         return;
       }
 
-      // Backend whitelist kontrolü
       const { data } = await supabase.rpc("is_email_allowed", {
         check_email: session.user.email,
       });
@@ -39,7 +36,6 @@ export default function AuthCallback() {
         return;
       }
 
-      // 🔥 ProtectedRoute tarafından kaydedilen rota
       const redirectPath =
         localStorage.getItem("auth_redirect_path") || "/";
 
