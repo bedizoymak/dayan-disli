@@ -581,9 +581,6 @@ Dayan Dişli Sanayi
           </div>
         )}
 
-        {/* Customer Information */}
-        <Card className="mb-6">
-
         
         {/* Customer Information */}
         <Card className="mb-6">
