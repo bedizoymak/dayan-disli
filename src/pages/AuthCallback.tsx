@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { isEmailAllowed } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AuthCallback() {
@@ -11,10 +10,10 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleRedirect = async () => {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (!user) {
+      if (!session?.user?.email) {
         toast({
           title: "Giriş Başarısız",
           description: "Kullanıcı bilgisi alınamadı.",
@@ -24,8 +23,12 @@ export default function AuthCallback() {
         return;
       }
 
-      // Whitelist kontrolü
-      if (!isEmailAllowed(user.email)) {
+      // Backend whitelist kontrolü
+      const { data } = await supabase.rpc("is_email_allowed", {
+        check_email: session.user.email,
+      });
+
+      if (data !== true) {
         toast({
           title: "Yetkisiz Giriş",
           description: "Bu email sistemde yetkili değil.",
@@ -36,13 +39,12 @@ export default function AuthCallback() {
         return;
       }
 
-      // 🔥 Daha önce ProtectedRoute tarafından kaydedilen rota
-      const redirectPath = localStorage.getItem("auth_redirect_path") || "/";
+      // 🔥 ProtectedRoute tarafından kaydedilen rota
+      const redirectPath =
+        localStorage.getItem("auth_redirect_path") || "/";
 
-      // Bir kere kullandıktan sonra sil
       localStorage.removeItem("auth_redirect_path");
 
-      // Yönlendir
       navigate(redirectPath, { replace: true });
     };
 
