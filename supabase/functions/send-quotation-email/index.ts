@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     // JSON al
-    const { to, from, subject, text, fileBase64, fileName } = await req.json();
+    const { to, from, subject, html, fileBase64, fileName } = await req.json();
 
     // Resend instance
     const resend = new Resend(Deno.env.get("RESEND_API_KEY")!);
@@ -26,9 +26,9 @@ serve(async (req) => {
     // Mail gönder
     const response = await resend.emails.send({
       to,
-      from,                    // frontend mutlaka bunu gönderiyor olmalı
+      from,
       subject,
-      text,
+      html, // HTML içerik
       attachments: [
         {
           filename: fileName,
@@ -38,7 +38,6 @@ serve(async (req) => {
       ],
     });
 
-    // Başarılı response
     return new Response(
       JSON.stringify({ success: true, response }),
       {
@@ -46,8 +45,7 @@ serve(async (req) => {
       }
     );
 
-  } catch (error) {
-    // Hata response
+  } catch (error: any) {
     return new Response(
       JSON.stringify({ error: error.message }),
       {

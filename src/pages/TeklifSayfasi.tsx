@@ -14,6 +14,17 @@ import autoTable from "jspdf-autotable";
 import { loadRobotoFont } from "@/lib/pdfFonts";
 import { incrementCounter } from "@/lib/supabaseCounter";
 
+function formatName(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(word =>
+      word.charAt(0).toLocaleUpperCase("tr-TR") +
+      word.slice(1).toLocaleLowerCase("tr-TR")
+    )
+    .join(" ");
+}
+
 
 interface ProductRow {
   id: number;
@@ -489,19 +500,36 @@ setCurrentTeklifNo(teklifNo);
       reader.readAsDataURL(pdfBlob);
     });
 
-    // E-posta metni
-    const emailBody = `
-Sayın ${ilgiliKisi || ""},
+    // 🔥 Kurumsal HTML Mail İçeriği
+function formatName(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(word =>
+      word.charAt(0).toLocaleUpperCase("tr-TR") +
+      word.slice(1).toLocaleLowerCase("tr-TR")
+    )
+    .join(" ");
+}
 
-Ek’te ${currentTeklifNo} numaralı fiyat teklifimizi bulabilirsiniz.
+const formattedName = formatName(ilgiliKisi);
+const today = new Date().toLocaleDateString("tr-TR");
 
-Firma: ${firma || "-"}
-Konu: ${konu || "-"}
+const emailSubject = `${currentTeklifNo} No'lu Fiyat Teklifi`;
 
-Saygılarımla,
-Hayrettin Dayan
-Dayan Dişli Sanayi
+const emailHtml = `
+Sayın ${formattedName},<br><br>
+Tarafınıza hazırlanan fiyat teklifimiz ekte bilginize sunulmuştur.<br><br>
+<b>Teklif No:</b> ${currentTeklifNo}<br>
+<b>Tarih:</b> ${today}<br><br>
+Her türlü sorunuz için memnuniyetle yardımcı olmaktan mutluluk duyarız.<br><br>
+Saygılarımızla,<br>
+<b>DAYAN DİŞLİ & Profil Taşlama</b><br>
+0 (212) XXX XX XX<br>
+info@dayandisli.com<br>
+www.dayandisli.com<br>
 `;
+
 
     // Supabase Edge Function çağrısı
     const response = await fetch(
@@ -517,10 +545,19 @@ Dayan Dişli Sanayi
           to: email,
           from: "info@dayandisli.com",
           subject: `${currentTeklifNo}'lu Fiyat Teklifimiz`,
-          text: emailBody,
+          html: emailHTML,
           fileBase64: pdfBase64,
           fileName: `${currentTeklifNo}.pdf`,
         }),
+        body: JSON.stringify({
+  to: email,
+  from: "info@dayandisli.com",
+  subject: emailSubject,
+  html: emailHtml,
+  fileBase64: pdfBase64,
+  fileName: `${currentTeklifNo}.pdf`
+}),
+
       }
     );
 
@@ -922,5 +959,6 @@ Dayan Dişli Sanayi
     </div>
   );
 };
+
 
 export default TeklifSayfasi;
