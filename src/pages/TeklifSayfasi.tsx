@@ -416,56 +416,57 @@ setCurrentTeklifNo(teklifNo);
   };
 
   const handleEmailPreview = async () => {
-    if (!firma || !ilgiliKisi) {
-      toast({
-        title: "Eksik Bilgi",
-        description: "Lutfen firma ve ilgili kisi bilgilerini doldurun.",
-        variant: "destructive"
-      });
-      return;
+  if (!firma || !ilgiliKisi || !email) {
+    toast({
+      title: "Eksik Bilgi",
+      description: "Firma, ilgili kişi ve e-posta zorunludur.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsGenerating(true);
+
+  try {
+    // Sayaç değerini al (ARTIRMADAN)
+    const { data: counterData, error: counterError } = await supabase
+      .from("counter")
+      .select("value")
+      .eq("id", 1)
+      .single();
+
+    if (counterError || !counterData) {
+      throw new Error("Sayaç bilgisi alınamadı");
     }
 
-    if (!email) {
-      toast({
-        title: "Eksik Bilgi",
-        description: "Lutfen musteri e-posta adresini doldurun.",
-        variant: "destructive"
-      });
-      return;
-    }
+    const currentCounter = counterData.value;
+    const yil = new Date().getFullYear();
+    const ay = String(new Date().getMonth() + 1).padStart(2, "0");
+    const sayi = String(currentCounter).padStart(3, "0");
 
-    setIsGenerating(true);
+    const teklifNo = `TR-DAYAN-${yil}${ay}${sayi}`;
+    setCurrentTeklifNo(teklifNo);
 
-    try {
-      
-      const teklifNo = "ÖNİZLEME";
+    // PDF üret
+    const doc = createPDF(teklifNo);
+    const pdfOutput = doc.output("blob");
+    setPdfBlob(pdfOutput);
 
+    const previewUrl = URL.createObjectURL(pdfOutput);
+    setPdfPreviewUrl(previewUrl);
 
-      setCurrentTeklifNo(teklifNo);
-      
-      const doc = createPDF(teklifNo);
-      
-      // Get PDF as blob for preview
-      const pdfOutput = doc.output('blob');
-      setPdfBlob(pdfOutput);
-      
-      // Create URL for preview
-      const previewUrl = URL.createObjectURL(pdfOutput);
-      setPdfPreviewUrl(previewUrl);
-      
-      // Show modal
-      setShowEmailModal(true);
-    } catch (error) {
-      console.error('PDF preview error:', error);
-      toast({
-        title: "Hata",
-        description: "PDF onizleme olusturulurken bir hata olustu.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+    setShowEmailModal(true);
+  } catch (error) {
+    console.error(error);
+    toast({
+      title: "Hata",
+      description: "Önizleme oluşturulamadı!",
+      variant: "destructive",
+    });
+  } finally {
+    setIsGenerating(false);
+  }
+};
 
   const handleSendEmail = async () => {
   if (!email) {
