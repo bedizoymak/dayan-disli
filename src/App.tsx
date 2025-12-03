@@ -14,6 +14,7 @@ import Apps from "./pages/Apps";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { CalculatorRoutes } from "./calculator";
 
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -55,9 +56,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-
-            {/* Calculator Sub-App (Public) */}
-            <Route path="/apps/calculator/*" element={<CalculatorRoutes />} />
+{/* Calculator Sub-App (Public) */}
+        <Route path="/apps/calculator/*" element={<CalculatorRoutes />} />
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
