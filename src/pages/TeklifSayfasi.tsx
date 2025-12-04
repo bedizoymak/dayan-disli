@@ -724,13 +724,10 @@ www.dayandisli.com<br>
       let teklifNo = currentTeklifNo;
       
       if (!teklifNo) {
-        const { data: counterData } = await supabase
-          .from("counter")
-          .select("value")
-          .eq("id", 1)
-          .single();
+        const { data, error } = await supabase.rpc("increment_monthly_counter");
+if (error || !data) throw error;
+const formattedCounter = String(data).padStart(3, "0");
 
-        const currentCounter = (counterData?.value || 0) + 1;
         const yil = new Date().getFullYear();
         const ay = String(new Date().getMonth() + 1).padStart(2, "0");
         const sayi = String(currentCounter).padStart(3, "0");
