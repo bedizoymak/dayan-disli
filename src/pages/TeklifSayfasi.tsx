@@ -136,22 +136,6 @@ const TeklifSayfasi = () => {
     return amountInTRY / EXCHANGE_RATES[toCurrency];
   };
 
-  // Handle currency change for a single row - propagates to all rows
-  const handleCurrencyChange = (newCurrency: string) => {
-    if (newCurrency === activeCurrency) return;
-    
-    // Convert all product prices to new currency
-    const updatedProducts = products.map(p => ({
-      ...p,
-      birimFiyat: parseFloat(convertCurrency(p.birimFiyat, activeCurrency, newCurrency).toFixed(2)),
-      doviz: newCurrency
-    }));
-    
-    setProducts(updatedProducts);
-    setActiveCurrency(newCurrency);
-    setProductChanged(true);
-  };
-
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
     setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: activeCurrency }]);
