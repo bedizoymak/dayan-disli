@@ -5,7 +5,7 @@ import nodemailer from "npm:nodemailer";
 
 // 🌍 SMTP ENV Values
 const smtpUser = Deno.env.get("SMTP_USER")!;
-const smtpPass = Deno.env.get("SMTP_PASS")!;
+const smtpPass = Deno.env.get("GMAIL_APP_PASSWORD")!;
 const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = Number(Deno.env.get("SMTP_PORT")!);
 
