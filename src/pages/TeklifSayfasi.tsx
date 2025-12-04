@@ -669,6 +669,16 @@ const handleCurrencyChange = (newCurrency: string) => {
     }
 
     if (!pdfBlob || !currentTeklifNo) {
+      // 🔥 Sayaç burada kesin artar (email send onayı sonrası)
+const { data, error } = await supabase.rpc("increment_monthly_counter");
+if (error || !data) throw error;
+
+const updatedCounter = String(data).padStart(3, "0");
+const now = new Date();
+const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+const teklifNo = `TR-DAYAN-${yearMonth}${updatedCounter}`;
+setCurrentTeklifNo(teklifNo);
+
       toast({
         title: "Hata",
         description: "PDF oluşturulamadı.",
@@ -774,6 +784,16 @@ www.dayandisli.com<br>
     try {
       // Generate teklif number
       let teklifNo = currentTeklifNo;
+      // 🔥 WhatsApp gönderiminde sayaç burada artar
+const { data, error } = await supabase.rpc("increment_monthly_counter");
+if (error || !data) throw error;
+
+const updatedCounter = String(data).padStart(3, "0");
+const now = new Date();
+const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+teklifNo = `TR-DAYAN-${yearMonth}${updatedCounter}`;
+setCurrentTeklifNo(teklifNo);
+
       
       if (!teklifNo) {
         const { data, error } = await supabase.rpc("increment_monthly_counter");
