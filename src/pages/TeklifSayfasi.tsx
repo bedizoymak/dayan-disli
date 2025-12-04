@@ -606,6 +606,58 @@ const handleCurrencyChange = (newCurrency: string) => {
     }
   };
 
+  const handleWhatsAppPreview = async () => {
+  if (!firma || !ilgiliKisi) {
+    toast({
+      title: "Eksik Bilgi",
+      description: "Lütfen firma ve ilgili kişi bilgilerini doldurun.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsGenerating(true);
+
+  try {
+    const { data: counterData, error } = await supabase
+      .from("counter")
+      .select("value")
+      .eq("id", 1)
+      .single();
+
+    if (error || !counterData) {
+      throw new Error("Sayaç bilgisi alınamadı");
+    }
+
+    const currentCounter = counterData.value + 1;
+    const yil = new Date().getFullYear();
+    const ay = String(new Date().getMonth() + 1).padStart(2, "0");
+    const sayi = String(currentCounter).padStart(3, "0");
+
+    const teklifNo = `TR-DAYAN-${yil}${ay}${sayi}`;
+    setCurrentTeklifNo(teklifNo);
+
+    const doc = createPDF(teklifNo);
+    const pdfOutput = doc.output("blob");
+    setPdfBlob(pdfOutput);
+
+    const previewUrl = URL.createObjectURL(pdfOutput);
+    setPdfPreviewUrl(previewUrl);
+
+    setShowEmailModal(true); // 📌 Aynı modalı kullanıyoruz
+  } catch (error) {
+    console.error(error);
+    toast({
+      title: "Hata",
+      description: "WhatsApp önizlemesi yapılamadı!",
+      variant: "destructive",
+    });
+  } finally {
+    setIsGenerating(false);
+  }
+};
+
+
   const handleSendEmail = async () => {
     if (!email) {
       toast({
@@ -1230,7 +1282,7 @@ DAYAN DİŞLİ SANAYİ
 
           <Button 
             size="lg" 
-            onClick={handleWhatsAppShare}
+            onClick={handleWhatsAppPreview}
             disabled={isSendingWhatsApp || !firma || !ilgiliKisi}
             className="bg-green-500 hover:bg-green-600 text-white px-8 h-14 text-base shadow-lg shadow-green-500/25"
           >
