@@ -136,6 +136,21 @@ const TeklifSayfasi = () => {
     return amountInTRY / EXCHANGE_RATES[toCurrency];
   };
 
+  // Fiyatları sabit tut - sadece para birimi değişsin
+const handleCurrencyChange = (newCurrency: string) => {
+  if (newCurrency === activeCurrency) return;
+
+  const updatedProducts = products.map(p => ({
+    ...p,
+    doviz: newCurrency
+  }));
+
+  setProducts(updatedProducts);
+  setActiveCurrency(newCurrency);
+  setProductChanged(true);
+};
+
+
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
     setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: activeCurrency }]);
