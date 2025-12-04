@@ -34,6 +34,7 @@ interface ProductRow {
   miktar: number;
   birim: string;
   birimFiyat: number;
+  doviz: string;
 }
 
 const MALZEME_OPTIONS = ["C45", "8620", "4140", "16MnCr5", "20MnCr5", "Bronz", "Özel"];
@@ -51,7 +52,7 @@ const TeklifSayfasi = () => {
   
   // Product rows state
   const [products, setProducts] = useState<ProductRow[]>([
-    { id: 1, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0 }
+    { id: 1, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: "TRY" }
   ]);
   
   // Footer fields state
@@ -111,9 +112,14 @@ const TeklifSayfasi = () => {
 
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
-    setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0 }]);
+    setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: "TRY" }]);
     setProductChanged(true);
   };
+const DOVIZ_OPTIONS = [
+  { value: "TRY", label: "₺" },
+  { value: "USD", label: "$" },
+  { value: "EUR", label: "€" },
+];
 
   const removeRow = (id: number) => {
     if (products.length > 1) {
@@ -543,20 +549,13 @@ www.dayandisli.com<br>
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
-          to: email,
-          from: "info@dayandisli.com",
-          subject: `${currentTeklifNo}'lu Fiyat Teklifimiz`,
-          html: emailHtml,
-          fileBase64: pdfBase64,
-          fileName: `${currentTeklifNo}.pdf`,
-        }),
-        body: JSON.stringify({
   to: email,
   from: "info@dayandisli.com",
   subject: emailSubject,
   html: emailHtml,
+  bcc: "bediz@dayandisli.com",
   fileBase64: pdfBase64,
-  fileName: `${currentTeklifNo}.pdf`
+  fileName: `${currentTeklifNo}.pdf`,
 }),
 
       }
@@ -766,6 +765,43 @@ www.dayandisli.com<br>
                         className="h-9 w-28"
                       />
                     </td>
+
+                    <td className="py-2 px-2">
+  <Input 
+    type="number" 
+    min="0"
+    step="0.01"
+    value={product.birimFiyat} 
+    onChange={(e) => {
+      setProductChanged(true);
+      updateProduct(product.id, 'birimFiyat', parseFloat(e.target.value) || 0);
+    }}
+    className="h-9 w-28"
+  />
+</td>
+
+{/* 🆕 Döviz Seçimi */}
+<td className="py-2 px-2">
+  <Select
+    value={product.doviz}
+    onValueChange={(v) => {
+      setProductChanged(true);
+      updateProduct(product.id, "doviz", v);
+    }}
+  >
+    <SelectTrigger className="h-9 w-20">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      {DOVIZ_OPTIONS.map(m => (
+        <SelectItem key={m.value} value={m.value}>
+          {m.label}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</td>
+
                     <td className="py-2 px-2 font-semibold text-[#0D3B66]">
                       {formatCurrency(calculateRowTotal(product))}
                     </td>
@@ -921,7 +957,7 @@ www.dayandisli.com<br>
               <strong>Alici:</strong> {email}
             </p>
             <p className="text-sm text-gray-600">
-              <strong>CC:</strong> bediz@dayandisli.com
+              <strong>BCC:</strong> bediz@dayandisli.com
             </p>
             <p className="text-sm text-gray-600">
               <strong>Konu:</strong> {currentTeklifNo}'lu Fiyat Teklifimiz
