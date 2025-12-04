@@ -1,16 +1,33 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+// supabase/functions/send-contact-email/index.ts
 
-Deno.serve(async (req) => {
-  // OPTIONS REQUEST
+import nodemailer from "npm:nodemailer";
+
+// 🌍 SMTP ENV Values (Enterprise Setup)
+const smtpUser = Deno.env.get("SMTP_USER")!;
+const smtpPass = Deno.env.get("SMTP_PASS")!;
+const smtpHost = Deno.env.get("SMTP_HOST")!;
+const smtpPort = Number(Deno.env.get("SMTP_PORT")!);
+
+Deno.serve(async (req: Request) => {
+  const allowedOrigins = [
+    "https://dayandisli.com",
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "http://localhost:5173",
+  ];
+  const origin = req.headers.get("origin") || "";
+  const corsOrigin = allowedOrigins.includes(origin)
+    ? origin
+    : "https://dayandisli.com";
+
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": corsOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   try {
@@ -19,110 +36,75 @@ Deno.serve(async (req) => {
     if (!token) {
       return new Response(
         JSON.stringify({ error: "reCAPTCHA token missing" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // GOOGLE RECAPTCHA VERIFY
-    const secret = Deno.env.get("RECAPTCHA_SECRET_KEY");
-
+    const secret = Deno.env.get("RECAPTCHA_SECRET_KEY")!;
     const verifyRes = await fetch(
       "https://www.google.com/recaptcha/api/siteverify",
       {
         method: "POST",
         body: new URLSearchParams({
-          secret: secret || "",
+          secret,
           response: token,
         }),
       }
     );
 
     const verifyData = await verifyRes.json();
-
     if (!verifyData.success) {
       return new Response(
-        JSON.stringify({
-          error: "reCAPTCHA doğrulanamadı. İşlem iptal edildi.",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "reCAPTCHA doğrulanamadı." }),
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // SEND EMAIL VIA RESEND API
-    const apiKey = Deno.env.get("RESEND_API_KEY");
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: "Missing RESEND_API_KEY" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Main email
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "DAYAN Dişli <info@dayandisli.com>",
-        to: ["info@dayandisli.com"],
-        subject: "Yeni İletişim Formu - dayandisli.com",
-        html: `
-          <h2>Yeni İletişim Formu</h2>
-          <p><strong>İsim:</strong> ${name}</p>
-          <p><strong>E-posta:</strong> ${email}</p>
-          <p><strong>Telefon:</strong> ${phone}</p>
-          <p><strong>Firma:</strong> ${company || "-"}</p>
-          <p><strong>Mesaj:</strong></p>
-          <p>${message.replace(/\n/g, "<br/>")}</p>
-        `,
-      }),
+    // 🚀 Gmail SMTP Transporter
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
     });
 
-    // Auto-reply
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "DAYAN Dişli <info@dayandisli.com>",
-        to: [email],
-        subject: "Formunuz bize ulaştı - DAYAN Dişli",
-        html: `
-          <p>Merhaba ${name},</p>
-          <p>Göndermiş olduğunuz form elimize ulaştı.</p>
-          <p>En kısa sürede sizinle iletişime geçeceğiz.</p>
-        `,
-      }),
+    // 📥 Admin'e mesaj bildirimi
+    await transporter.sendMail({
+      from: `"DAYAN Dişli" <${smtpUser}>`,
+      to: smtpUser,
+      subject: "Yeni İletişim Formu - dayandisli.com",
+      html: `
+        <h2>Yeni İletişim Formu</h2>
+        <p><strong>İsim:</strong> ${name}</p>
+        <p><strong>E-posta:</strong> ${email}</p>
+        <p><strong>Telefon:</strong> ${phone}</p>
+        <p><strong>Firma:</strong> ${company || "-"}</p>
+        <p><strong>Mesaj:</strong><br>${message.replace(/\n/g, "<br>")}</p>
+      `,
+    });
+
+    // 📤 Kullanıcıya otomatik cevap
+    await transporter.sendMail({
+      from: `"DAYAN Dişli" <${smtpUser}>`,
+      to: email,
+      subject: "Formunuz bize ulaştı - DAYAN Dişli",
+      html: `
+        <p>Merhaba ${name},</p>
+        <p>Mesajınız başarıyla elimize ulaştı.</p>
+        <p>En kısa sürede sizinle iletişime geçeceğiz.</p>
+      `,
     });
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    });
+    console.error("SMTP ERROR:", err);
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: corsHeaders }
+    );
   }
 });

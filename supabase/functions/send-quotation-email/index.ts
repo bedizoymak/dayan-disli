@@ -1,34 +1,42 @@
 // supabase/functions/send-quotation-email/index.ts
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { Resend } from "npm:resend";
+import nodemailer from "npm:nodemailer";
+
+// 🌍 SMTP ENV Values
+const smtpUser = Deno.env.get("SMTP_USER")!;
+const smtpPass = Deno.env.get("SMTP_PASS")!;
+const smtpHost = Deno.env.get("SMTP_HOST")!;
+const smtpPort = Number(Deno.env.get("SMTP_PORT")!);
 
 // CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 serve(async (req) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // JSON al
-    const { to, from, subject, html, fileBase64, fileName } = await req.json();
+    const { to, subject, html, fileBase64, fileName } = await req.json();
 
-    // Resend instance
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY")!);
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
 
-    // Mail gönder
-    const response = await resend.emails.send({
+    await transporter.sendMail({
+      from: `"DAYAN Dişli" <${smtpUser}>`,
       to,
-      from,
       subject,
-      html, // HTML içerik
+      html,
       attachments: [
         {
           filename: fileName,
@@ -38,14 +46,13 @@ serve(async (req) => {
       ],
     });
 
-    return new Response(
-      JSON.stringify({ success: true, response }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
   } catch (error: any) {
+    console.error("SMTP ERROR:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
