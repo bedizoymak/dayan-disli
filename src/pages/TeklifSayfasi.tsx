@@ -616,116 +616,13 @@ const handleCurrencyChange = (newCurrency: string) => {
 
 // Modlar için kısa çağrılar
 const handleEmailPreview = () => openPreview("email");
-const handleWhatsAppPreview = () => openPreview("whatsapp");
-  const handleSendEmail = async () => {
-    if (!email) {
-      toast({
-        title: "Hata",
-        description: "Müşteri e-posta adresi boş olamaz.",
-        variant: "destructive",
-      });
-      return;
-    }
+const handleWhatsAppPreview = () => {
+  setShareMode("whatsapp");
+  // PDF oluşturma preview logic burada
+  generatePreviewPDF();
+  setShowEmailModal(true);
+};
 
-    if (!pdfBlob || !currentTeklifNo) {
-      // 🔥 Sayaç burada kesin artar (email send onayı sonrası)
-const { data, error } = await supabase.rpc("increment_monthly_counter");
-if (error || !data) throw error;
-
-const updatedCounter = String(data).padStart(3, "0");
-const now = new Date();
-const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-const teklifNo = `TR-DAYAN-${yearMonth}${updatedCounter}`;
-setCurrentTeklifNo(teklifNo);
-
-      toast({
-        title: "Hata",
-        description: "PDF oluşturulamadı.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSendingEmail(true);
-
-    try {
-      const reader = new FileReader();
-      const pdfBase64 = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(pdfBlob);
-      });
-
-      const formattedName = formatName(ilgiliKisi);
-      const today = new Date().toLocaleDateString("tr-TR");
-      const emailSubject = `${currentTeklifNo} No'lu Fiyat Teklifi`;
-
-      const emailHtml = `
-Sayın ${formattedName},<br><br>
-Tarafınıza hazırlanan fiyat teklifimiz ekte bilginize sunulmuştur.<br><br>
-<b>Teklif No:</b> ${currentTeklifNo}<br>
-<b>Tarih:</b> ${today}<br><br>
-Her türlü sorunuz için memnuniyetle yardımcı olmaktan mutluluk duyarız.<br><br>
-Saygılarımızla,<br>
-<b>DAYAN DİŞLİ & Profil Taşlama</b><br>
-0 (212) XXX XX XX<br>
-info@dayandisli.com<br>
-www.dayandisli.com<br>
-`;
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-quotation-email`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            to: email,
-            from: "info@dayandisli.com",
-            subject: emailSubject,
-            html: emailHtml,
-            bcc: "bediz@dayandisli.com",
-            fileBase64: pdfBase64,
-            fileName: `${currentTeklifNo}.pdf`,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("Function returned error:", data);
-        throw new Error(data.error || "Function error");
-      }
-
-      toast({
-        title: "Başarılı!",
-        description: "Teklif başarıyla e-posta olarak gönderildi.",
-      });
-
-      setShowEmailModal(false);
-      setPdfPreviewUrl("");
-      setPdfBlob(null);
-      setCurrentTeklifNo("");
-
-    } catch (err: unknown) {
-      console.error("Email sending error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Bilinmeyen hata";
-      toast({
-        title: "Hata",
-        description: `E-posta gönderilemedi: ${errorMessage}`,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSendingEmail(false);
-    }
-  };
 
   // WhatsApp Share Function with Web Share API
   const handleWhatsAppShare = async () => {
@@ -1325,33 +1222,38 @@ DAYAN DİŞLİ SANAYİ
           </div>
           
           <DialogFooter className="gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowEmailModal(false)}
-              disabled={isSendingEmail}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
-            >
-              <X className="w-4 h-4 mr-2" />
-              İptal
-            </Button>
-            <Button 
-              onClick={handleSendEmail}
-              disabled={isSendingEmail}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isSendingEmail ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Gönderiliyor...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Gönder
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+  <Button 
+    variant="outline" 
+    onClick={() => setShowEmailModal(false)}
+    disabled={isSendingEmail || isSendingWhatsApp}
+    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+  >
+    İptal
+  </Button>
+
+  {/* Eğer mod email ise mail gönder butonu */}
+  {shareMode === "email" && (
+    <Button 
+      onClick={handleSendEmail}
+      disabled={isSendingEmail}
+      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+    >
+      Gönder
+    </Button>
+  )}
+
+  {/* Eğer mod whatsapp ise whatsapp gönder butonu */}
+  {shareMode === "whatsapp" && (
+    <Button
+      onClick={handleWhatsAppShare}
+      disabled={isSendingWhatsApp}
+      className="bg-green-500 hover:bg-green-600 text-white"
+    >
+      WhatsApp ile Gönder
+    </Button>
+  )}
+</DialogFooter>
+
         </DialogContent>
       </Dialog>
     </div>
