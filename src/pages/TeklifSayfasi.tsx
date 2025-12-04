@@ -94,6 +94,8 @@ const TeklifSayfasi = () => {
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [currentTeklifNo, setCurrentTeklifNo] = useState("");
   const [productChanged, setProductChanged] = useState(false);
+  const [shareMode, setShareMode] = useState<"email" | "whatsapp" | null>(null);
+
 
   // Load font and logo on mount
   useEffect(() => {
@@ -555,56 +557,67 @@ const handleCurrencyChange = (newCurrency: string) => {
     }
   };
 
-  const handleEmailPreview = async () => {
-    if (!firma || !ilgiliKisi || !email) {
-      toast({
-        title: "Eksik Bilgi",
-        description: "Firma, ilgili kişi ve e-posta zorunludur.",
-        variant: "destructive",
-      });
-      return;
+  const openPreview = async (mode: "email" | "whatsapp") => {
+  if (!firma || !ilgiliKisi || (mode === "email" && !email)) {
+    toast({
+      title: "Eksik Bilgi",
+      description:
+        mode === "email"
+          ? "Firma, ilgili kişi ve e-posta zorunludur."
+          : "Firma ve ilgili kişi zorunludur.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsGenerating(true);
+  setShareMode(mode); // 💡 hangi akışta olduğumuzu kaydediyoruz
+
+  try {
+    const { data: counterData, error: counterError } = await supabase
+      .from("counter")
+      .select("value")
+      .eq("id", 1)
+      .single();
+
+    if (counterError || !counterData) {
+      throw new Error("Sayaç bilgisi alınamadı");
     }
 
-    setIsGenerating(true);
+    const currentCounter = counterData.value + 1;
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}`;
+    const sayi = String(currentCounter).padStart(3, "0");
 
-    try {
-      const { data: counterData, error: counterError } = await supabase
-        .from("counter")
-        .select("value")
-        .eq("id", 1)
-        .single();
+    const teklifNo = `TR-DAYAN-${yearMonth}${sayi}`;
+    setCurrentTeklifNo(teklifNo);
 
-      if (counterError || !counterData) {
-        throw new Error("Sayaç bilgisi alınamadı");
-      }
+    const doc = createPDF(teklifNo);
+    const pdfOutput = doc.output("blob");
+    setPdfBlob(pdfOutput);
 
-      const currentCounter = counterData.value + 1;
-      const yil = new Date().getFullYear();
-      const ay = String(new Date().getMonth() + 1).padStart(2, "0");
-      const sayi = String(currentCounter).padStart(3, "0");
+    const previewUrl = URL.createObjectURL(pdfOutput);
+    setPdfPreviewUrl(previewUrl);
 
-      const teklifNo = `TR-DAYAN-${yil}${ay}${sayi}`;
-      setCurrentTeklifNo(teklifNo);
+    setShowEmailModal(true);
+  } catch (error) {
+    console.error(error);
+    toast({
+      title: "Hata",
+      description: "Önizleme oluşturulamadı!",
+      variant: "destructive",
+    });
+  } finally {
+    setIsGenerating(false);
+  }
+};
 
-      const doc = createPDF(teklifNo);
-      const pdfOutput = doc.output("blob");
-      setPdfBlob(pdfOutput);
+// Modlar için kısa çağrılar
+const handleEmailPreview = () => openPreview("email");
+const handleWhatsAppPreview = () => openPreview("whatsapp");
 
-      const previewUrl = URL.createObjectURL(pdfOutput);
-      setPdfPreviewUrl(previewUrl);
-
-      setShowEmailModal(true);
-    } catch (error) {
-      console.error(error);
-      toast({
-        title: "Hata",
-        description: "Önizleme oluşturulamadı!",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handleWhatsAppPreview = async () => {
   if (!firma || !ilgiliKisi) {
