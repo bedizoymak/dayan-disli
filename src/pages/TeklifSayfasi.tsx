@@ -49,6 +49,13 @@ const DOVIZ_OPTIONS = [
   { value: "EUR", label: "€ EUR", symbol: "€" },
 ];
 
+// Static conversion rates (TRY as base)
+const EXCHANGE_RATES: Record<string, number> = {
+  TRY: 1,
+  USD: 34.50,  // 1 USD = 34.50 TRY
+  EUR: 37.00,  // 1 EUR = 37.00 TRY
+};
+
 const TeklifSayfasi = () => {
   const { toast } = useToast();
   
@@ -58,6 +65,9 @@ const TeklifSayfasi = () => {
   const [tel, setTel] = useState("");
   const [email, setEmail] = useState("");
   const [konu, setKonu] = useState("");
+  
+  // Active currency for all products
+  const [activeCurrency, setActiveCurrency] = useState("TRY");
   
   // Product rows state
   const [products, setProducts] = useState<ProductRow[]>([
@@ -118,9 +128,33 @@ const TeklifSayfasi = () => {
     };
   }, [pdfPreviewUrl]);
 
+  // Currency conversion helper
+  const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
+    if (fromCurrency === toCurrency) return amount;
+    // Convert to TRY first, then to target currency
+    const amountInTRY = amount * EXCHANGE_RATES[fromCurrency];
+    return amountInTRY / EXCHANGE_RATES[toCurrency];
+  };
+
+  // Handle currency change for a single row - propagates to all rows
+  const handleCurrencyChange = (newCurrency: string) => {
+    if (newCurrency === activeCurrency) return;
+    
+    // Convert all product prices to new currency
+    const updatedProducts = products.map(p => ({
+      ...p,
+      birimFiyat: parseFloat(convertCurrency(p.birimFiyat, activeCurrency, newCurrency).toFixed(2)),
+      doviz: newCurrency
+    }));
+    
+    setProducts(updatedProducts);
+    setActiveCurrency(newCurrency);
+    setProductChanged(true);
+  };
+
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
-    setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: "TRY" }]);
+    setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: activeCurrency }]);
     setProductChanged(true);
   };
 
@@ -143,7 +177,7 @@ const TeklifSayfasi = () => {
   
   const calculateTotal = () => calculateSubtotal() + calculateKDV();
 
-  const formatCurrency = (amount: number, currency = "TRY") => {
+  const formatCurrency = (amount: number, currency = activeCurrency) => {
     const symbols: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€" };
     return `${symbols[currency] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
@@ -152,7 +186,7 @@ const TeklifSayfasi = () => {
     return date.toLocaleDateString('tr-TR');
   };
 
-  // Modern PDF Design
+  // Enhanced PDF Design
   const createPDF = (teklifNo: string): jsPDF => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -170,14 +204,19 @@ const TeklifSayfasi = () => {
 
     const fontName = fontBase64 ? "Roboto" : "helvetica";
     
-    // Header Background
-    doc.setFillColor(13, 59, 102);
-    doc.rect(0, 0, pageWidth, 45, 'F');
+    // ===== HEADER SECTION =====
+    // Header Background with gradient effect
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, pageWidth, 42, 'F');
+    
+    // Accent line
+    doc.setFillColor(59, 130, 246); // blue-500
+    doc.rect(0, 42, pageWidth, 2, 'F');
     
     // Add Logo (top-left on dark bg)
     if (logoBase64) {
       try {
-        doc.addImage(logoBase64, "PNG", margin, 8, 50, 22);
+        doc.addImage(logoBase64, "PNG", margin, 10, 45, 20);
       } catch (e) {
         console.error('Failed to add logo to PDF:', e);
       }
@@ -185,76 +224,121 @@ const TeklifSayfasi = () => {
     
     // Company Name (if no logo)
     if (!logoBase64) {
-      doc.setFontSize(16);
+      doc.setFontSize(18);
       doc.setTextColor(255, 255, 255);
       doc.setFont(fontName, "bold");
-      doc.text("DAYAN DISLI SANAYI", margin, 20);
+      doc.text("DAYAN DISLI SANAYI", margin, 22);
     }
     
     // Document Info Box (Right side of header)
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(pageWidth - 75, 8, 60, 30, 2, 2, 'F');
+    doc.setFillColor(30, 41, 59); // slate-800
+    doc.roundedRect(pageWidth - 70, 8, 55, 28, 3, 3, 'F');
     
-    doc.setFontSize(8);
-    doc.setTextColor(13, 59, 102);
+    doc.setFontSize(11);
+    doc.setTextColor(59, 130, 246); // blue-500
     doc.setFont(fontName, "bold");
-    doc.text("FIYAT TEKLIFI", pageWidth - 45, 15, { align: "center" });
+    doc.text("FIYAT TEKLIFI", pageWidth - 42.5, 16, { align: "center" });
+    
+    doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.3);
+    doc.line(pageWidth - 65, 19, pageWidth - 20, 19);
     
     doc.setFont(fontName, "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Teklif No: ${teklifNo}`, pageWidth - 70, 22);
-    doc.text(`Tarih: ${today}`, pageWidth - 70, 27);
-    doc.text(`Sayfa: 1/1`, pageWidth - 70, 32);
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184); // slate-400
+    doc.text(`No: ${teklifNo}`, pageWidth - 65, 25);
+    doc.text(`Tarih: ${today}`, pageWidth - 65, 30);
     
-    // Company Contact Info (Below header)
+    // ===== COMPANY CONTACT =====
     let yPos = 52;
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(100, 116, 139); // slate-500
     doc.setFont(fontName, "normal");
     doc.text("Ikitelli O.S.B. Cevre Sanayi Sitesi, 8. Blok No: 45/47 Basaksehir / Istanbul", margin, yPos);
     doc.text("Tel: +90 536 583 74 20 | E-mail: info@dayandisli.com | Web: dayandisli.com", margin, yPos + 4);
 
-    // Customer Info Section
-    yPos = 65;
-    doc.setFillColor(245, 247, 250);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 28, 2, 2, 'F');
+    // ===== CUSTOMER INFO SECTION =====
+    yPos = 66;
     
+    // Section header
+    doc.setFillColor(241, 245, 249); // slate-100
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 8, 2, 2, 'F');
     doc.setFontSize(9);
-    doc.setTextColor(13, 59, 102);
+    doc.setTextColor(15, 23, 42); // slate-900
     doc.setFont(fontName, "bold");
-    doc.text("MUSTERI BILGILERI", margin + 4, yPos + 6);
+    doc.text("MUSTERI BILGILERI", margin + 4, yPos + 5.5);
+    
+    // Customer details box
+    yPos += 10;
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 22, 2, 2, 'F');
     
     doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
     doc.setFont(fontName, "normal");
-    doc.text(`Firma: ${firma}`, margin + 4, yPos + 13);
-    doc.text(`Ilgili: ${ilgiliKisi}`, margin + 90, yPos + 13);
-    doc.text(`Tel: ${tel}`, margin + 4, yPos + 19);
-    doc.text(`E-posta: ${email}`, margin + 90, yPos + 19);
-    doc.text(`Konu: ${konu}`, margin + 4, yPos + 25);
-
-    // Intro Text
-    yPos = 100;
-    doc.setFontSize(9);
-    doc.setTextColor(40, 40, 40);
-    doc.text(`Sayin ${ilgiliKisi},`, margin, yPos);
-    doc.text("Asagida talebiniz dogrultusunda hazirlanan fiyat teklifimizi bilgilerinize sunariz.", margin, yPos + 6);
-    doc.text("Iyi calismalar dileriz. Saygilarimizla,", margin, yPos + 12);
+    doc.setTextColor(71, 85, 105); // slate-600
+    
+    const col1X = margin + 4;
+    const col2X = pageWidth / 2 + 5;
+    
     doc.setFont(fontName, "bold");
-    doc.text("Hayrettin DAYAN", margin, yPos + 18);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Firma:", col1X, yPos + 6);
+    doc.setFont(fontName, "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(firma || "-", col1X + 18, yPos + 6);
+    
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("Ilgili:", col2X, yPos + 6);
+    doc.setFont(fontName, "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(ilgiliKisi || "-", col2X + 18, yPos + 6);
+    
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("Tel:", col1X, yPos + 12);
+    doc.setFont(fontName, "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(tel || "-", col1X + 18, yPos + 12);
+    
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("E-posta:", col2X, yPos + 12);
+    doc.setFont(fontName, "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(email || "-", col2X + 18, yPos + 12);
+    
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("Konu:", col1X, yPos + 18);
+    doc.setFont(fontName, "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(konu || "-", col1X + 18, yPos + 18);
 
-    // Product Table
-    yPos = 125;
+    // ===== INTRO TEXT =====
+    yPos += 28;
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85); // slate-700
+    doc.text(`Sayin ${ilgiliKisi || "Yetkili"},`, margin, yPos);
+    doc.text("Asagida talebiniz dogrultusunda hazirlanan fiyat teklifimizi bilgilerinize sunariz.", margin, yPos + 5);
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("Iyi calismalar dileriz. Saygilarimizla,", margin, yPos + 10);
+    doc.setTextColor(59, 130, 246);
+    doc.text("Hayrettin DAYAN", margin, yPos + 15);
+
+    // ===== PRODUCT TABLE =====
+    yPos += 22;
+    
     const tableBody = products.map((p, idx) => [
       (idx + 1).toString(),
-      p.kod,
-      p.cins,
+      p.kod || "-",
+      p.cins || "-",
       p.malzeme,
       p.miktar.toString(),
       p.birim,
-      formatCurrency(p.birimFiyat, p.doviz),
-      formatCurrency(calculateRowTotal(p), p.doviz)
+      formatCurrency(p.birimFiyat, activeCurrency),
+      formatCurrency(calculateRowTotal(p), activeCurrency)
     ]);
 
     autoTable(doc, {
@@ -263,126 +347,159 @@ const TeklifSayfasi = () => {
       theme: 'grid',
       styles: { 
         fontSize: 8, 
-        cellPadding: 3, 
+        cellPadding: 4, 
         font: fontName,
-        lineColor: [200, 200, 200],
-        lineWidth: 0.1
+        lineColor: [226, 232, 240], // slate-200
+        lineWidth: 0.2,
+        textColor: [51, 65, 85] // slate-700
       },
       headStyles: { 
-        fillColor: [13, 59, 102], 
-        textColor: 255, 
+        fillColor: [15, 23, 42], // slate-900
+        textColor: [255, 255, 255], 
         fontStyle: 'bold', 
         font: fontName,
-        halign: 'center'
+        halign: 'center',
+        cellPadding: 5
       },
       bodyStyles: { font: fontName },
-      alternateRowStyles: { fillColor: [250, 250, 250] },
+      alternateRowStyles: { fillColor: [248, 250, 252] }, // slate-50
       head: [['#', 'Kod', 'Urun/Hizmet', 'Malzeme', 'Miktar', 'Birim', 'Birim Fiyat', 'Toplam']],
       body: tableBody,
       columnStyles: {
-        0: { cellWidth: 8, halign: 'center' },
+        0: { cellWidth: 10, halign: 'center' },
         1: { cellWidth: 22 },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 20, halign: 'center' },
+        2: { cellWidth: 42 },
+        3: { cellWidth: 22, halign: 'center' },
         4: { cellWidth: 15, halign: 'center' },
         5: { cellWidth: 15, halign: 'center' },
-        6: { cellWidth: 25, halign: 'right' },
-        7: { cellWidth: 30, halign: 'right' }
+        6: { cellWidth: 27, halign: 'right' },
+        7: { cellWidth: 27, halign: 'right', fontStyle: 'bold' }
       }
     });
 
-    // Totals Box
-    const finalY = (doc as any).lastAutoTable.finalY + 5;
+    // ===== TOTALS BOX =====
+    const finalY = (doc as any).lastAutoTable.finalY + 8;
+    const totalsWidth = 75;
+    const totalsX = pageWidth - margin - totalsWidth;
     
-    doc.setFillColor(245, 247, 250);
-    doc.roundedRect(pageWidth - 75, finalY, 60, 32, 2, 2, 'F');
+    // Totals container
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.roundedRect(totalsX, finalY, totalsWidth, 36, 3, 3, 'F');
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.setLineWidth(0.5);
+    doc.roundedRect(totalsX, finalY, totalsWidth, 36, 3, 3, 'S');
     
-    doc.setFontSize(8);
+    // Subtotal
+    doc.setFontSize(9);
     doc.setFont(fontName, "normal");
-    doc.setTextColor(60, 60, 60);
-    doc.text("Ara Toplam:", pageWidth - 72, finalY + 8);
-    doc.text(formatCurrency(calculateSubtotal()), pageWidth - 18, finalY + 8, { align: "right" });
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text("Ara Toplam:", totalsX + 5, finalY + 8);
+    doc.setTextColor(15, 23, 42);
+    doc.text(formatCurrency(calculateSubtotal(), activeCurrency), totalsX + totalsWidth - 5, finalY + 8, { align: "right" });
     
-    doc.text("KDV (%20):", pageWidth - 72, finalY + 16);
-    doc.text(formatCurrency(calculateKDV()), pageWidth - 18, finalY + 16, { align: "right" });
+    // KDV
+    doc.setTextColor(100, 116, 139);
+    doc.text("KDV (%20):", totalsX + 5, finalY + 16);
+    doc.setTextColor(15, 23, 42);
+    doc.text(formatCurrency(calculateKDV(), activeCurrency), totalsX + totalsWidth - 5, finalY + 16, { align: "right" });
     
-    doc.setFillColor(13, 59, 102);
-    doc.roundedRect(pageWidth - 75, finalY + 20, 60, 10, 0, 0, 'F');
+    // Divider line
+    doc.setDrawColor(203, 213, 225); // slate-300
+    doc.setLineWidth(0.3);
+    doc.line(totalsX + 5, finalY + 21, totalsX + totalsWidth - 5, finalY + 21);
+    
+    // Grand Total
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.roundedRect(totalsX, finalY + 24, totalsWidth, 12, 0, 0, 'F');
+    // Bottom corners
+    doc.roundedRect(totalsX, finalY + 24, totalsWidth, 12, 3, 3, 'F');
+    doc.setFillColor(15, 23, 42);
+    doc.rect(totalsX, finalY + 24, totalsWidth, 6, 'F');
+    
     doc.setFont(fontName, "bold");
+    doc.setFontSize(10);
     doc.setTextColor(255, 255, 255);
-    doc.text("GENEL TOPLAM:", pageWidth - 72, finalY + 27);
-    doc.text(formatCurrency(calculateTotal()), pageWidth - 18, finalY + 27, { align: "right" });
+    doc.text("GENEL TOPLAM:", totalsX + 5, finalY + 31);
+    doc.text(formatCurrency(calculateTotal(), activeCurrency), totalsX + totalsWidth - 5, finalY + 31, { align: "right" });
 
-    // Footer Fields
-    let footerY = finalY + 45;
-    doc.setFontSize(8);
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(60, 60, 60);
-
+    // ===== FOOTER FIELDS =====
+    let footerY = finalY + 50;
+    
     const footerFields = [
       { label: 'Notlar', value: notlar },
       { label: 'Opsiyon', value: opsiyon },
       { label: 'Teslim Suresi', value: teslimSuresi },
       { label: 'Odeme Sekli', value: odemeSekli },
       { label: 'Teslim Yeri', value: teslimYeri }
-    ];
+    ].filter(f => f.value);
 
-    footerFields.forEach(field => {
-      if (field.value) {
+    if (footerFields.length > 0) {
+      doc.setFillColor(241, 245, 249); // slate-100
+      doc.roundedRect(margin, footerY - 4, pageWidth - 2 * margin, 8, 2, 2, 'F');
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont(fontName, "bold");
+      doc.text("EK BILGILER", margin + 4, footerY + 1.5);
+      
+      footerY += 8;
+      doc.setFontSize(8);
+      
+      footerFields.forEach(field => {
         doc.setFont(fontName, "bold");
-        doc.setTextColor(13, 59, 102);
+        doc.setTextColor(59, 130, 246); // blue-500
         doc.text(field.label + ":", margin, footerY);
         doc.setFont(fontName, "normal");
-        doc.setTextColor(60, 60, 60);
-        doc.text(field.value, margin + 35, footerY);
-        footerY += 6;
-      }
-    });
+        doc.setTextColor(71, 85, 105); // slate-600
+        
+        // Handle long text wrapping
+        const maxWidth = pageWidth - 2 * margin - 35;
+        const lines = doc.splitTextToSize(field.value, maxWidth);
+        doc.text(lines, margin + 35, footerY);
+        footerY += (lines.length * 4) + 3;
+      });
+    }
 
-    // Signature Section
-    footerY = Math.max(footerY + 10, pageHeight - 50);
+    // ===== SIGNATURE SECTION =====
+    footerY = Math.max(footerY + 15, pageHeight - 55);
     
-    const signBoxWidth = 50;
-    const signBoxHeight = 22;
-    const gap = 15;
+    const signBoxWidth = 52;
+    const signBoxHeight = 24;
+    const gap = 12;
     const startX = margin;
 
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
+    doc.setDrawColor(203, 213, 225); // slate-300
+    doc.setLineWidth(0.4);
 
-    // Box 1
-    doc.roundedRect(startX, footerY, signBoxWidth, signBoxHeight, 2, 2);
-    doc.setFontSize(7);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(13, 59, 102);
-    doc.text("SIPARIS ONAYI", startX + signBoxWidth/2, footerY + 5, { align: "center" });
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(150, 150, 150);
-    doc.text("Kase - Imza", startX + signBoxWidth/2, footerY + signBoxHeight - 4, { align: "center" });
+    // Signature boxes
+    const signatureBoxes = [
+      { title: "SIPARIS ONAYI", subtitle: "Kase - Imza" },
+      { title: "TEDARIKCI ONAYI", subtitle: "Kase - Imza" },
+      { title: "ONAY TARIHI", subtitle: "__ / __ / ____" }
+    ];
 
-    // Box 2
-    doc.roundedRect(startX + signBoxWidth + gap, footerY, signBoxWidth, signBoxHeight, 2, 2);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(13, 59, 102);
-    doc.text("TEDARIKCI ONAYI", startX + signBoxWidth + gap + signBoxWidth/2, footerY + 5, { align: "center" });
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(150, 150, 150);
-    doc.text("Kase - Imza", startX + signBoxWidth + gap + signBoxWidth/2, footerY + signBoxHeight - 4, { align: "center" });
+    signatureBoxes.forEach((box, idx) => {
+      const boxX = startX + (signBoxWidth + gap) * idx;
+      
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.roundedRect(boxX, footerY, signBoxWidth, signBoxHeight, 3, 3, 'FD');
+      
+      doc.setFontSize(7);
+      doc.setFont(fontName, "bold");
+      doc.setTextColor(15, 23, 42);
+      doc.text(box.title, boxX + signBoxWidth/2, footerY + 5, { align: "center" });
+      
+      doc.setFont(fontName, "normal");
+      doc.setTextColor(148, 163, 184); // slate-400
+      doc.text(box.subtitle, boxX + signBoxWidth/2, footerY + signBoxHeight - 4, { align: "center" });
+    });
 
-    // Box 3
-    doc.roundedRect(startX + (signBoxWidth + gap) * 2, footerY, signBoxWidth, signBoxHeight, 2, 2);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(13, 59, 102);
-    doc.text("ONAY TARIHI", startX + (signBoxWidth + gap) * 2 + signBoxWidth/2, footerY + 5, { align: "center" });
-
-    // Footer line
-    doc.setDrawColor(13, 59, 102);
-    doc.setLineWidth(0.5);
-    doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+    // ===== FOOTER BAR =====
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, pageHeight - 12, pageWidth, 12, 'F');
     
     doc.setFontSize(7);
-    doc.setTextColor(100, 100, 100);
-    doc.text("DAYAN DISLI SANAYI | www.dayandisli.com | info@dayandisli.com", pageWidth / 2, pageHeight - 10, { align: "center" });
+    doc.setTextColor(148, 163, 184); // slate-400
+    doc.text("DAYAN DISLI SANAYI | www.dayandisli.com | info@dayandisli.com | +90 536 583 74 20", pageWidth / 2, pageHeight - 5, { align: "center" });
 
     return doc;
   };
@@ -590,7 +707,7 @@ www.dayandisli.com<br>
     }
   };
 
-  // WhatsApp Share Function
+  // WhatsApp Share Function with Web Share API
   const handleWhatsAppShare = async () => {
     if (!firma || !ilgiliKisi) {
       toast({
@@ -604,7 +721,7 @@ www.dayandisli.com<br>
     setIsSendingWhatsApp(true);
 
     try {
-      // Generate PDF
+      // Generate teklif number
       let teklifNo = currentTeklifNo;
       
       if (!teklifNo) {
@@ -621,30 +738,77 @@ www.dayandisli.com<br>
         teklifNo = `TR-DAYAN-${yil}${ay}${sayi}`;
       }
 
-      // Create message text
-      const message = encodeURIComponent(
-        `Sayın ${formatName(ilgiliKisi)},\n\n` +
-        `*${teklifNo}* numaralı fiyat teklifimiz hazırlanmıştır.\n\n` +
-        `📋 *Firma:* ${firma}\n` +
-        `💰 *Toplam:* ${formatCurrency(calculateTotal())}\n\n` +
-        `Detaylı teklif PDF'i için lütfen e-posta adresinizi paylaşın veya bizimle iletişime geçin.\n\n` +
-        `DAYAN DİŞLİ SANAYİ\n` +
-        `📞 +90 536 583 74 20\n` +
-        `📧 info@dayandisli.com\n` +
-        `🌐 dayandisli.com`
-      );
+      // Create PDF
+      const doc = createPDF(teklifNo);
+      const pdfOutput = doc.output("blob");
+      
+      // Create File object from Blob
+      const pdfFile = new File([pdfOutput], `${teklifNo}.pdf`, { type: "application/pdf" });
 
-      // WhatsApp URL with pre-filled message
-      const whatsappUrl = tel 
-        ? `https://api.whatsapp.com/send?phone=${tel.replace(/\D/g, '')}&text=${message}`
-        : `https://api.whatsapp.com/send?text=${message}`;
+      // Message text
+      const messageText = `Merhaba, fiyat teklifleri ekte yer almaktadır:
 
-      window.open(whatsappUrl, '_blank');
+📋 *Teklif No:* ${teklifNo}
+🏢 *Firma:* ${firma}
+👤 *İlgili:* ${formatName(ilgiliKisi)}
+💰 *Toplam:* ${formatCurrency(calculateTotal(), activeCurrency)}
 
-      toast({
-        title: "WhatsApp Açıldı",
-        description: "Mesaj WhatsApp'ta hazırlandı.",
-      });
+DAYAN DİŞLİ SANAYİ
+📞 +90 536 583 74 20
+📧 info@dayandisli.com
+🌐 dayandisli.com`;
+
+      // Check if Web Share API with files is supported
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        try {
+          await navigator.share({
+            files: [pdfFile],
+            title: `${teklifNo} - Fiyat Teklifi`,
+            text: messageText
+          });
+          
+          toast({
+            title: "Paylaşıldı",
+            description: "PDF başarıyla paylaşım için hazırlandı.",
+          });
+        } catch (shareError) {
+          // User cancelled or share failed - fallback to WhatsApp Web
+          if ((shareError as Error).name !== 'AbortError') {
+            throw shareError;
+          }
+        }
+      } else {
+        // Fallback: Open WhatsApp Web with message only
+        const fallbackMessage = encodeURIComponent(
+          `Merhaba, fiyat teklifleri ekte yer almaktadır:\n\n` +
+          `📋 Teklif No: ${teklifNo}\n` +
+          `🏢 Firma: ${firma}\n` +
+          `👤 İlgili: ${formatName(ilgiliKisi)}\n` +
+          `💰 Toplam: ${formatCurrency(calculateTotal(), activeCurrency)}\n\n` +
+          `PDF dosyasını e-posta ile gönderebiliriz.\n\n` +
+          `DAYAN DİŞLİ SANAYİ\n` +
+          `📞 +90 536 583 74 20\n` +
+          `📧 info@dayandisli.com`
+        );
+
+        const whatsappUrl = tel 
+          ? `https://api.whatsapp.com/send?phone=${tel.replace(/\D/g, '')}&text=${fallbackMessage}`
+          : `https://api.whatsapp.com/send?text=${fallbackMessage}`;
+
+        window.open(whatsappUrl, '_blank');
+
+        // Also download the PDF for manual attachment
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(pdfOutput);
+        downloadLink.download = `${teklifNo}.pdf`;
+        downloadLink.click();
+        URL.revokeObjectURL(downloadLink.href);
+
+        toast({
+          title: "WhatsApp Açıldı",
+          description: "PDF indirildi. WhatsApp'a manuel olarak ekleyebilirsiniz.",
+        });
+      }
 
     } catch (error) {
       console.error("WhatsApp share error:", error);
@@ -787,17 +951,35 @@ www.dayandisli.com<br>
                 </div>
                 Ürün / Hizmet Tablosu
               </div>
-              <Button 
-                size="sm" 
-                onClick={addRow}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-1" /> Satır Ekle
-              </Button>
+              <div className="flex items-center gap-3">
+                {/* Global Currency Selector */}
+                <div className="flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-slate-400" />
+                  <Select value={activeCurrency} onValueChange={handleCurrencyChange}>
+                    <SelectTrigger className="w-28 h-9 bg-slate-900 border-slate-600 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-600">
+                      {DOVIZ_OPTIONS.map(m => (
+                        <SelectItem key={m.value} value={m.value} className="text-white hover:bg-slate-700">
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={addRow}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Satır Ekle
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6 overflow-x-auto">
-            <table className="w-full min-w-[900px]">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-slate-600">
                   <th className="text-left py-3 px-2 text-sm font-semibold text-slate-300">#</th>
@@ -806,8 +988,7 @@ www.dayandisli.com<br>
                   <th className="text-left py-3 px-2 text-sm font-semibold text-slate-300">Malzeme</th>
                   <th className="text-left py-3 px-2 text-sm font-semibold text-slate-300">Miktar</th>
                   <th className="text-left py-3 px-2 text-sm font-semibold text-slate-300">Birim</th>
-                  <th className="text-left py-3 px-2 text-sm font-semibold text-slate-300">Birim Fiyat</th>
-                  <th className="text-left py-3 px-2 text-sm font-semibold text-slate-300">Döviz</th>
+                  <th className="text-left py-3 px-2 text-sm font-semibold text-slate-300">Birim Fiyat ({DOVIZ_OPTIONS.find(d => d.value === activeCurrency)?.symbol})</th>
                   <th className="text-left py-3 px-2 text-sm font-semibold text-slate-300">Toplam</th>
                   <th className="py-3 px-2"></th>
                 </tr>
@@ -894,28 +1075,8 @@ www.dayandisli.com<br>
                       />
                     </td>
                     <td className="py-3 px-2">
-                      <Select
-                        value={product.doviz}
-                        onValueChange={(v) => {
-                          setProductChanged(true);
-                          updateProduct(product.id, "doviz", v);
-                        }}
-                      >
-                        <SelectTrigger className="h-9 w-24 bg-slate-900 border-slate-600 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-600">
-                          {DOVIZ_OPTIONS.map(m => (
-                            <SelectItem key={m.value} value={m.value} className="text-white hover:bg-slate-700">
-                              {m.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="py-3 px-2">
                       <span className="font-semibold text-emerald-400 font-mono">
-                        {formatCurrency(calculateRowTotal(product), product.doviz)}
+                        {formatCurrency(calculateRowTotal(product), activeCurrency)}
                       </span>
                     </td>
                     <td className="py-3 px-2">
@@ -939,15 +1100,15 @@ www.dayandisli.com<br>
               <div className="w-72 bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
                 <div className="flex justify-between py-3 px-4 border-b border-slate-700">
                   <span className="text-slate-400">Ara Toplam:</span>
-                  <span className="text-white font-mono">{formatCurrency(calculateSubtotal())}</span>
+                  <span className="text-white font-mono">{formatCurrency(calculateSubtotal(), activeCurrency)}</span>
                 </div>
                 <div className="flex justify-between py-3 px-4 border-b border-slate-700">
                   <span className="text-slate-400">KDV (%20):</span>
-                  <span className="text-white font-mono">{formatCurrency(calculateKDV())}</span>
+                  <span className="text-white font-mono">{formatCurrency(calculateKDV(), activeCurrency)}</span>
                 </div>
                 <div className="flex justify-between py-3 px-4 bg-blue-600">
                   <span className="font-bold text-white">Genel Toplam:</span>
-                  <span className="font-bold text-white font-mono">{formatCurrency(calculateTotal())}</span>
+                  <span className="font-bold text-white font-mono">{formatCurrency(calculateTotal(), activeCurrency)}</span>
                 </div>
               </div>
             </div>
@@ -1036,7 +1197,7 @@ www.dayandisli.com<br>
           <Button 
             size="lg" 
             onClick={generatePDF}
-            disabled={!productChanged || isGenerating}
+            disabled={isGenerating}
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-14 text-base shadow-lg shadow-blue-600/25"
           >
             {isGenerating ? (
@@ -1047,7 +1208,7 @@ www.dayandisli.com<br>
             ) : (
               <>
                 <FileDown className="w-5 h-5 mr-2" />
-                PDF İndir
+                PDF İndir / Önizle
               </>
             )}
           </Button>
@@ -1066,7 +1227,7 @@ www.dayandisli.com<br>
             ) : (
               <>
                 <Mail className="w-5 h-5 mr-2" />
-                E-posta Gönder
+                Mail Gönder
               </>
             )}
           </Button>
