@@ -618,10 +618,9 @@ const handleCurrencyChange = (newCurrency: string) => {
 const handleEmailPreview = () => openPreview("email");
 const handleWhatsAppPreview = () => {
   setShareMode("whatsapp");
-  // PDF oluşturma preview logic burada
-  generatePreviewPDF();
   setShowEmailModal(true);
 };
+
 
 
   // WhatsApp Share Function with Web Share API
