@@ -720,37 +720,54 @@ const TeklifSayfasi = () => {
       });
 
       const pdfBase64 = await base64Promise;
+      const emailHtml = `
+<div style="font-family: Arial, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.6;">
+  <p><strong>Sayın ${formatName(ilgiliKisi)},</strong></p>
+
+  <p>Tarafınıza hazırlanan fiyat teklifimiz ekte bilginize sunulmuştur.</p>
+
+  <p><strong>Teklif No:</strong> <strong>${currentTeklifNo}</strong></p>
+
+  <br/>
+
+  <p>Her türlü sorunuz için memnuniyetle yardımcı olmaktan mutluluk duyarız.</p>
+
+  <br/>
+
+  <p>
+    <strong>DAYAN DİŞLİ & PROFİL TAŞLAMA</strong><br/>
+    <strong>📞 +90 536 583 74 20</strong><br/>
+    <strong>📧 info@dayandisli.com</strong><br/>
+    <strong>🌐 www.dayandisli.com</strong>
+  </p>
+</div>
+`;
+
 
       const { error } = await supabase.functions.invoke('send-quotation-email', {
         body: {
-          to: email,
-          bcc: 'bediz@dayandisli.com',
-          subject: `${currentTeklifNo} No'lu Fiyat Teklifi`,
-          firma,
-          ilgiliKisi: formatName(ilgiliKisi),
-          tel,
-          konu,
-          products: products.map(p => ({
-            kod: p.kod,
-            cins: p.cins,
-            malzeme: p.malzeme,
-            miktar: p.miktar,
-            birim: p.birim,
-            birimFiyat: formatCurrency(p.birimFiyat, activeCurrency),
-            toplam: formatCurrency(calculateRowTotal(p), activeCurrency)
-          })),
-          araToplam: formatCurrency(calculateSubtotal(), activeCurrency),
-          kdv: formatCurrency(calculateKDV(), activeCurrency),
-          genelToplam: formatCurrency(calculateTotal(), activeCurrency),
-          notlar,
-          opsiyon,
-          teslimSuresi,
-          odemeSekli,
-          teslimYeri,
-          teklifNo: currentTeklifNo,
-          pdfBase64,
-          pdfFileName: `${currentTeklifNo}.pdf`
-        }
+  to: email,
+  bcc: 'bediz@dayandisli.com',
+  subject: `${currentTeklifNo} No'lu Fiyat Teklifi`,
+  html: emailHtml, // 🚀 EKLEDİĞİMİZ SATIR
+  firma,
+  ilgiliKisi: formatName(ilgiliKisi),
+  tel,
+  konu,
+  products: products.map(...),
+  araToplam,
+  kdv,
+  genelToplam,
+  notlar,
+  opsiyon,
+  teslimSuresi,
+  odemeSekli,
+  teslimYeri,
+  teklifNo: currentTeklifNo,
+  pdfBase64,
+  pdfFileName: `${currentTeklifNo}.pdf`
+}
+
       });
 
       if (error) throw error;
