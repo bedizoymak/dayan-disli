@@ -17,7 +17,7 @@ const apps = [
     icon: FileText,
   },
   {
-    title: "DAYAN CALCULATOR",
+    title: "DAYAN Calculator",
     description: "Dişli hesaplama ve üretim reçetesi oluşturma",
     route: "/apps/calculator",
     icon: FileText,
