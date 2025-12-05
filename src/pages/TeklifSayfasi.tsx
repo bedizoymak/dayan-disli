@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import {
   Plus, Trash2, FileDown, Loader2, Mail, Send, X, 
   Building2, User, Phone, AtSign, FileText, Package, 
   Calculator, Banknote, Calendar, Truck, CreditCard, MapPin,
-  MessageCircle, Settings, ArrowLeft
+  MessageCircle, Settings, ArrowLeft, Users, Check
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -41,6 +41,15 @@ interface ProductRow {
   doviz: string;
 }
 
+interface CustomerProfile {
+  id: string;
+  firma: string;
+  ilgili_kisi: string;
+  telefon: string;
+  email: string;
+  konu: string;
+}
+
 const MALZEME_OPTIONS = ["C45", "8620", "4140", "16MnCr5", "20MnCr5", "Bronz", "Özel"];
 const BIRIM_OPTIONS = ["Adet", "Kg", "Metre", "Set"];
 const DOVIZ_OPTIONS = [
@@ -52,8 +61,8 @@ const DOVIZ_OPTIONS = [
 // Static conversion rates (TRY as base)
 const EXCHANGE_RATES: Record<string, number> = {
   TRY: 1,
-  USD: 34.50,  // 1 USD = 34.50 TRY
-  EUR: 37.00,  // 1 EUR = 37.00 TRY
+  USD: 34.50,
+  EUR: 37.00,
 };
 
 const TeklifSayfasi = () => {
@@ -90,12 +99,40 @@ const TeklifSayfasi = () => {
   
   // Modal state
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>("");
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  
+  // Counter & tracking state
   const [currentTeklifNo, setCurrentTeklifNo] = useState("");
-  const [productChanged, setProductChanged] = useState(false);
-  const [shareMode, setShareMode] = useState<"email" | "whatsapp" | null>(null);
+  const [formChanged, setFormChanged] = useState(true); // Start as true so first action generates new number
+  const [lastFinalizedTeklifNo, setLastFinalizedTeklifNo] = useState("");
+  const formSnapshotRef = useRef<string>("");
 
+  // Customer autofill state
+  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+
+  // Get form snapshot for change detection
+  const getFormSnapshot = () => {
+    return JSON.stringify({
+      firma, ilgiliKisi, tel, email, konu,
+      products, notlar, opsiyon, teslimSuresi, odemeSekli, teslimYeri, activeCurrency
+    });
+  };
+
+  // Check if form has changed since last finalized quotation
+  const checkFormChanged = () => {
+    const currentSnapshot = getFormSnapshot();
+    return currentSnapshot !== formSnapshotRef.current;
+  };
+
+  // Mark form as finalized (save snapshot)
+  const markFormFinalized = () => {
+    formSnapshotRef.current = getFormSnapshot();
+    setFormChanged(false);
+  };
 
   // Load font and logo on mount
   useEffect(() => {
@@ -121,6 +158,13 @@ const TeklifSayfasi = () => {
     loadAssets();
   }, []);
 
+  // Track form changes
+  useEffect(() => {
+    if (lastFinalizedTeklifNo && checkFormChanged()) {
+      setFormChanged(true);
+    }
+  }, [firma, ilgiliKisi, tel, email, konu, products, notlar, opsiyon, teslimSuresi, odemeSekli, teslimYeri, activeCurrency]);
+
   // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
@@ -130,52 +174,88 @@ const TeklifSayfasi = () => {
     };
   }, [pdfPreviewUrl]);
 
+  // Load customers from Supabase
+  const loadCustomers = async () => {
+    setLoadingCustomers(true);
+    try {
+      const { data, error } = await supabase
+        .from('customer_profile')
+        .select('*')
+        .order('firma', { ascending: true });
+      
+      if (error) throw error;
+      setCustomers(data || []);
+    } catch (error) {
+      console.error('Failed to load customers:', error);
+      toast({
+        title: "Hata",
+        description: "Müşteri listesi yüklenemedi.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingCustomers(false);
+    }
+  };
+
+  // Select customer and autofill
+  const selectCustomer = (customer: CustomerProfile) => {
+    setFirma(customer.firma || "");
+    setIlgiliKisi(customer.ilgili_kisi || "");
+    setTel(customer.telefon || "");
+    setEmail(customer.email || "");
+    setKonu(customer.konu || "");
+    setShowCustomerModal(false);
+    setFormChanged(true);
+    
+    toast({
+      title: "Müşteri Seçildi",
+      description: `${customer.firma} bilgileri dolduruldu.`,
+    });
+  };
+
   // Currency conversion helper
   const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
     if (fromCurrency === toCurrency) return amount;
-    // Convert to TRY first, then to target currency
     const amountInTRY = amount * EXCHANGE_RATES[fromCurrency];
     return amountInTRY / EXCHANGE_RATES[toCurrency];
   };
 
-  // Fiyatları sabit tut - sadece para birimi değişsin
-const handleCurrencyChange = (newCurrency: string) => {
-  if (newCurrency === activeCurrency) return;
+  // Handle global currency change with conversion
+  const handleCurrencyChange = (newCurrency: string) => {
+    if (newCurrency === activeCurrency) return;
 
-  const updatedProducts = products.map(p => ({
-    ...p,
-    doviz: newCurrency
-  }));
+    const updatedProducts = products.map(p => ({
+      ...p,
+      birimFiyat: convertCurrency(p.birimFiyat, activeCurrency, newCurrency),
+      doviz: newCurrency
+    }));
 
-  setProducts(updatedProducts);
-  setActiveCurrency(newCurrency);
-  setProductChanged(true);
-};
-
+    setProducts(updatedProducts);
+    setActiveCurrency(newCurrency);
+    setFormChanged(true);
+  };
 
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
     setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: activeCurrency }]);
-    setProductChanged(true);
+    setFormChanged(true);
   };
 
   const removeRow = (id: number) => {
     if (products.length > 1) {
       setProducts(products.filter(p => p.id !== id));
-      setProductChanged(true);
+      setFormChanged(true);
     }
   };
 
   const updateProduct = (id: number, field: keyof ProductRow, value: string | number) => {
     setProducts(products.map(p => p.id === id ? { ...p, [field]: value } : p));
+    setFormChanged(true);
   };
 
   const calculateRowTotal = (row: ProductRow) => row.miktar * row.birimFiyat;
-  
   const calculateSubtotal = () => products.reduce((sum, p) => sum + calculateRowTotal(p), 0);
-  
   const calculateKDV = () => calculateSubtotal() * 0.20;
-  
   const calculateTotal = () => calculateSubtotal() + calculateKDV();
 
   const formatCurrency = (amount: number, currency = activeCurrency) => {
@@ -183,8 +263,33 @@ const handleCurrencyChange = (newCurrency: string) => {
     return `${symbols[currency] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('tr-TR');
+  const formatDate = (date: Date) => date.toLocaleDateString('tr-TR');
+
+  // Get or generate teklif number
+  const getOrGenerateTeklifNo = async (): Promise<string | null> => {
+    // If form hasn't changed and we have a finalized number, reuse it
+    if (!formChanged && lastFinalizedTeklifNo) {
+      return lastFinalizedTeklifNo;
+    }
+
+    // Generate new number
+    try {
+      const { data, error } = await supabase.rpc("increment_monthly_counter");
+      if (error || !data) {
+        console.error("Counter error:", error);
+        return null;
+      }
+
+      const formattedCounter = String(data).padStart(3, "0");
+      const now = new Date();
+      const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const teklifNo = `TR-DAYAN-${yearMonth}${formattedCounter}`;
+      
+      return teklifNo;
+    } catch (error) {
+      console.error("Counter generation error:", error);
+      return null;
+    }
   };
 
   // Enhanced PDF Design
@@ -192,7 +297,7 @@ const handleCurrencyChange = (newCurrency: string) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
+    const margin = 12;
     const today = formatDate(new Date());
     
     // Embed Roboto font for Turkish character support
@@ -206,130 +311,113 @@ const handleCurrencyChange = (newCurrency: string) => {
     const fontName = fontBase64 ? "Roboto" : "helvetica";
     
     // ===== HEADER SECTION =====
-    // Header Background with gradient effect
-    doc.setFillColor(15, 23, 42); // slate-900
-    doc.rect(0, 0, pageWidth, 42, 'F');
+    // Clean white header with border
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, pageWidth, 38, 'F');
     
-    // Accent line
-    doc.setFillColor(59, 130, 246); // blue-500
-    doc.rect(0, 42, pageWidth, 2, 'F');
+    // Bottom border line
+    doc.setDrawColor(59, 130, 246); // blue-500
+    doc.setLineWidth(1);
+    doc.line(0, 38, pageWidth, 38);
     
-    // Add Logo (top-left on dark bg)
+    // Add Logo (top-left)
     if (logoBase64) {
       try {
-        doc.addImage(logoBase64, "PNG", margin, 10, 45, 20);
+        doc.addImage(logoBase64, "PNG", margin, 8, 42, 18);
       } catch (e) {
         console.error('Failed to add logo to PDF:', e);
+        doc.setFontSize(14);
+        doc.setTextColor(15, 23, 42);
+        doc.setFont(fontName, "bold");
+        doc.text("DAYAN DISLI SANAYI", margin, 18);
       }
-    }
-    
-    // Company Name (if no logo)
-    if (!logoBase64) {
-      doc.setFontSize(18);
-      doc.setTextColor(255, 255, 255);
+    } else {
+      doc.setFontSize(14);
+      doc.setTextColor(15, 23, 42);
       doc.setFont(fontName, "bold");
-      doc.text("DAYAN DISLI SANAYI", margin, 22);
+      doc.text("DAYAN DISLI SANAYI", margin, 18);
     }
     
-    // Document Info Box (Right side of header)
-    doc.setFillColor(30, 41, 59); // slate-800
-    doc.roundedRect(pageWidth - 70, 8, 55, 28, 3, 3, 'F');
-    
-    doc.setFontSize(11);
-    doc.setTextColor(59, 130, 246); // blue-500
-    doc.setFont(fontName, "bold");
-    doc.text("FIYAT TEKLIFI", pageWidth - 42.5, 16, { align: "center" });
-    
-    doc.setDrawColor(59, 130, 246);
-    doc.setLineWidth(0.3);
-    doc.line(pageWidth - 65, 19, pageWidth - 20, 19);
-    
-    doc.setFont(fontName, "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184); // slate-400
-    doc.text(`No: ${teklifNo}`, pageWidth - 65, 25);
-    doc.text(`Tarih: ${today}`, pageWidth - 65, 30);
-    
-    // ===== COMPANY CONTACT =====
-    let yPos = 52;
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139); // slate-500
-    doc.setFont(fontName, "normal");
-    doc.text("Ikitelli O.S.B. Cevre Sanayi Sitesi, 8. Blok No: 45/47 Basaksehir / Istanbul", margin, yPos);
-    doc.text("Tel: +90 536 583 74 20 | E-mail: info@dayandisli.com | Web: dayandisli.com", margin, yPos + 4);
-
-    // ===== CUSTOMER INFO SECTION =====
-    yPos = 66;
-    
-    // Section header
-    doc.setFillColor(241, 245, 249); // slate-100
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 8, 2, 2, 'F');
-    doc.setFontSize(9);
+    // TEKLİF title and info (Right side)
+    doc.setFontSize(20);
     doc.setTextColor(15, 23, 42); // slate-900
     doc.setFont(fontName, "bold");
-    doc.text("MUSTERI BILGILERI", margin + 4, yPos + 5.5);
+    doc.text("TEKLIF", pageWidth - margin, 16, { align: "right" });
     
-    // Customer details box
-    yPos += 10;
+    doc.setFontSize(9);
+    doc.setFont(fontName, "normal");
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text(`No: ${teklifNo}`, pageWidth - margin, 24, { align: "right" });
+    doc.text(`Tarih: ${today}`, pageWidth - margin, 30, { align: "right" });
+    
+    // Page info
+    doc.text("SAYFA 1 / 1", pageWidth - margin, 36, { align: "right" });
+
+    // ===== TWO-COLUMN INFO SECTION =====
+    let yPos = 46;
+    const leftColWidth = (pageWidth - 2 * margin - 8) / 2;
+    const rightColX = margin + leftColWidth + 8;
+    
+    // Left Column - SATICI (Seller)
     doc.setFillColor(248, 250, 252); // slate-50
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 22, 2, 2, 'F');
+    doc.roundedRect(margin, yPos, leftColWidth, 42, 2, 2, 'F');
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, yPos, leftColWidth, 42, 2, 2, 'S');
+    
+    doc.setFontSize(9);
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(59, 130, 246); // blue-500
+    doc.text("SATICI", margin + 4, yPos + 6);
     
     doc.setFontSize(8);
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("DAYAN DISLI SANAYI", margin + 4, yPos + 13);
+    
     doc.setFont(fontName, "normal");
     doc.setTextColor(71, 85, 105); // slate-600
+    doc.text("Ikitelli O.S.B. Cevre Sanayi Sitesi", margin + 4, yPos + 19);
+    doc.text("8. Blok No: 45/47", margin + 4, yPos + 24);
+    doc.text("Basaksehir / Istanbul 34490", margin + 4, yPos + 29);
+    doc.text("Tel: +90 536 583 74 20", margin + 4, yPos + 35);
+    doc.text("info@dayandisli.com", margin + 4, yPos + 40);
     
-    const col1X = margin + 4;
-    const col2X = pageWidth / 2 + 5;
+    // Right Column - ALICI (Customer)
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(rightColX, yPos, leftColWidth, 42, 2, 2, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(rightColX, yPos, leftColWidth, 42, 2, 2, 'S');
     
+    doc.setFontSize(9);
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(59, 130, 246);
+    doc.text("ALICI", rightColX + 4, yPos + 6);
+    
+    doc.setFontSize(8);
     doc.setFont(fontName, "bold");
     doc.setTextColor(15, 23, 42);
-    doc.text("Firma:", col1X, yPos + 6);
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(71, 85, 105);
-    doc.text(firma || "-", col1X + 18, yPos + 6);
+    doc.text(firma || "-", rightColX + 4, yPos + 13);
     
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text("Ilgili:", col2X, yPos + 6);
     doc.setFont(fontName, "normal");
     doc.setTextColor(71, 85, 105);
-    doc.text(ilgiliKisi || "-", col2X + 18, yPos + 6);
-    
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text("Tel:", col1X, yPos + 12);
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(71, 85, 105);
-    doc.text(tel || "-", col1X + 18, yPos + 12);
-    
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text("E-posta:", col2X, yPos + 12);
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(71, 85, 105);
-    doc.text(email || "-", col2X + 18, yPos + 12);
-    
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text("Konu:", col1X, yPos + 18);
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(71, 85, 105);
-    doc.text(konu || "-", col1X + 18, yPos + 18);
+    doc.text(`Ilgili: ${ilgiliKisi || "-"}`, rightColX + 4, yPos + 19);
+    doc.text(`Tel: ${tel || "-"}`, rightColX + 4, yPos + 25);
+    doc.text(`E-posta: ${email || "-"}`, rightColX + 4, yPos + 31);
+    if (konu) {
+      doc.text(`Konu: ${konu}`, rightColX + 4, yPos + 37);
+    }
 
     // ===== INTRO TEXT =====
-    yPos += 28;
+    yPos += 48;
     doc.setFontSize(9);
     doc.setTextColor(51, 65, 85); // slate-700
+    doc.setFont(fontName, "normal");
     doc.text(`Sayin ${ilgiliKisi || "Yetkili"},`, margin, yPos);
     doc.text("Asagida talebiniz dogrultusunda hazirlanan fiyat teklifimizi bilgilerinize sunariz.", margin, yPos + 5);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text("Iyi calismalar dileriz. Saygilarimizla,", margin, yPos + 10);
-    doc.setTextColor(59, 130, 246);
-    doc.text("Hayrettin DAYAN", margin, yPos + 15);
 
     // ===== PRODUCT TABLE =====
-    yPos += 22;
+    yPos += 12;
     
     const tableBody = products.map((p, idx) => [
       (idx + 1).toString(),
@@ -339,6 +427,7 @@ const handleCurrencyChange = (newCurrency: string) => {
       p.miktar.toString(),
       p.birim,
       formatCurrency(p.birimFiyat, activeCurrency),
+      "%20",
       formatCurrency(calculateRowTotal(p), activeCurrency)
     ]);
 
@@ -348,9 +437,9 @@ const handleCurrencyChange = (newCurrency: string) => {
       theme: 'grid',
       styles: { 
         fontSize: 8, 
-        cellPadding: 4, 
+        cellPadding: 3.5, 
         font: fontName,
-        lineColor: [226, 232, 240], // slate-200
+        lineColor: [203, 213, 225], // slate-300
         lineWidth: 0.2,
         textColor: [51, 65, 85] // slate-700
       },
@@ -360,71 +449,66 @@ const handleCurrencyChange = (newCurrency: string) => {
         fontStyle: 'bold', 
         font: fontName,
         halign: 'center',
-        cellPadding: 5
+        cellPadding: 4
       },
       bodyStyles: { font: fontName },
       alternateRowStyles: { fillColor: [248, 250, 252] }, // slate-50
-      head: [['#', 'Kod', 'Urun/Hizmet', 'Malzeme', 'Miktar', 'Birim', 'Birim Fiyat', 'Toplam']],
+      head: [['#', 'Kod', 'Hizmet / Urun', 'Malzeme', 'Miktar', 'Birim', 'Birim Fiyat', 'KDV', 'Toplam']],
       body: tableBody,
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 22 },
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 18 },
         2: { cellWidth: 42 },
-        3: { cellWidth: 22, halign: 'center' },
-        4: { cellWidth: 15, halign: 'center' },
-        5: { cellWidth: 15, halign: 'center' },
-        6: { cellWidth: 27, halign: 'right' },
-        7: { cellWidth: 27, halign: 'right', fontStyle: 'bold' }
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 14, halign: 'center' },
+        5: { cellWidth: 14, halign: 'center' },
+        6: { cellWidth: 24, halign: 'right' },
+        7: { cellWidth: 12, halign: 'center' },
+        8: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
       }
     });
 
-    // ===== TOTALS BOX =====
-    const finalY = (doc as any).lastAutoTable.finalY + 8;
-    const totalsWidth = 75;
+    // ===== TOTALS SECTION =====
+    const finalY = (doc as any).lastAutoTable.finalY + 6;
+    const totalsWidth = 80;
     const totalsX = pageWidth - margin - totalsWidth;
     
-    // Totals container
-    doc.setFillColor(248, 250, 252); // slate-50
-    doc.roundedRect(totalsX, finalY, totalsWidth, 36, 3, 3, 'F');
-    doc.setDrawColor(226, 232, 240); // slate-200
-    doc.setLineWidth(0.5);
-    doc.roundedRect(totalsX, finalY, totalsWidth, 36, 3, 3, 'S');
-    
-    // Subtotal
-    doc.setFontSize(9);
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(100, 116, 139); // slate-500
-    doc.text("Ara Toplam:", totalsX + 5, finalY + 8);
-    doc.setTextColor(15, 23, 42);
-    doc.text(formatCurrency(calculateSubtotal(), activeCurrency), totalsX + totalsWidth - 5, finalY + 8, { align: "right" });
-    
-    // KDV
-    doc.setTextColor(100, 116, 139);
-    doc.text("KDV (%20):", totalsX + 5, finalY + 16);
-    doc.setTextColor(15, 23, 42);
-    doc.text(formatCurrency(calculateKDV(), activeCurrency), totalsX + totalsWidth - 5, finalY + 16, { align: "right" });
-    
-    // Divider line
-    doc.setDrawColor(203, 213, 225); // slate-300
-    doc.setLineWidth(0.3);
-    doc.line(totalsX + 5, finalY + 21, totalsX + totalsWidth - 5, finalY + 21);
-    
-    // Grand Total
-    doc.setFillColor(15, 23, 42); // slate-900
-    doc.roundedRect(totalsX, finalY + 24, totalsWidth, 12, 0, 0, 'F');
-    // Bottom corners
-    doc.roundedRect(totalsX, finalY + 24, totalsWidth, 12, 3, 3, 'F');
-    doc.setFillColor(15, 23, 42);
-    doc.rect(totalsX, finalY + 24, totalsWidth, 6, 'F');
-    
-    doc.setFont(fontName, "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255);
-    doc.text("GENEL TOPLAM:", totalsX + 5, finalY + 31);
-    doc.text(formatCurrency(calculateTotal(), activeCurrency), totalsX + totalsWidth - 5, finalY + 31, { align: "right" });
+    // Totals container with clean lines
+    const totalsData = [
+      { label: "ARA TOPLAM", value: formatCurrency(calculateSubtotal(), activeCurrency), bold: false },
+      { label: "BRUT TOPLAM", value: formatCurrency(calculateSubtotal(), activeCurrency), bold: false },
+      { label: "TOPLAM K.D.V (%20)", value: formatCurrency(calculateKDV(), activeCurrency), bold: false },
+      { label: "GENEL TOPLAM", value: formatCurrency(calculateTotal(), activeCurrency), bold: true },
+    ];
+
+    let totalsY = finalY;
+    totalsData.forEach((item, idx) => {
+      const isLast = idx === totalsData.length - 1;
+      const rowHeight = isLast ? 10 : 7;
+      
+      if (isLast) {
+        doc.setFillColor(15, 23, 42); // slate-900
+        doc.rect(totalsX, totalsY, totalsWidth, rowHeight, 'F');
+        doc.setTextColor(255, 255, 255);
+      } else {
+        doc.setFillColor(idx % 2 === 0 ? 248 : 241, idx % 2 === 0 ? 250 : 245, idx % 2 === 0 ? 252 : 249);
+        doc.rect(totalsX, totalsY, totalsWidth, rowHeight, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.2);
+        doc.rect(totalsX, totalsY, totalsWidth, rowHeight, 'S');
+        doc.setTextColor(71, 85, 105);
+      }
+      
+      doc.setFontSize(isLast ? 9 : 8);
+      doc.setFont(fontName, item.bold ? "bold" : "normal");
+      doc.text(item.label, totalsX + 4, totalsY + (isLast ? 6.5 : 5));
+      doc.text(item.value, totalsX + totalsWidth - 4, totalsY + (isLast ? 6.5 : 5), { align: "right" });
+      
+      totalsY += rowHeight;
+    });
 
     // ===== FOOTER FIELDS =====
-    let footerY = finalY + 50;
+    let footerY = totalsY + 12;
     
     const footerFields = [
       { label: 'Notlar', value: notlar },
@@ -435,43 +519,41 @@ const handleCurrencyChange = (newCurrency: string) => {
     ].filter(f => f.value);
 
     if (footerFields.length > 0) {
-      doc.setFillColor(241, 245, 249); // slate-100
-      doc.roundedRect(margin, footerY - 4, pageWidth - 2 * margin, 8, 2, 2, 'F');
-      doc.setFontSize(9);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(margin, footerY - 2, pageWidth - 2 * margin, 6, 1, 1, 'F');
+      doc.setFontSize(8);
       doc.setTextColor(15, 23, 42);
       doc.setFont(fontName, "bold");
-      doc.text("EK BILGILER", margin + 4, footerY + 1.5);
+      doc.text("EK BILGILER", margin + 3, footerY + 2);
       
       footerY += 8;
       doc.setFontSize(8);
       
       footerFields.forEach(field => {
         doc.setFont(fontName, "bold");
-        doc.setTextColor(59, 130, 246); // blue-500
+        doc.setTextColor(59, 130, 246);
         doc.text(field.label + ":", margin, footerY);
         doc.setFont(fontName, "normal");
-        doc.setTextColor(71, 85, 105); // slate-600
+        doc.setTextColor(71, 85, 105);
         
-        // Handle long text wrapping
-        const maxWidth = pageWidth - 2 * margin - 35;
+        const maxWidth = pageWidth - 2 * margin - 30;
         const lines = doc.splitTextToSize(field.value, maxWidth);
-        doc.text(lines, margin + 35, footerY);
-        footerY += (lines.length * 4) + 3;
+        doc.text(lines, margin + 30, footerY);
+        footerY += (lines.length * 4) + 2;
       });
     }
 
     // ===== SIGNATURE SECTION =====
-    footerY = Math.max(footerY + 15, pageHeight - 55);
+    footerY = Math.max(footerY + 10, pageHeight - 50);
     
-    const signBoxWidth = 52;
-    const signBoxHeight = 24;
-    const gap = 12;
+    const signBoxWidth = 50;
+    const signBoxHeight = 22;
+    const gap = 10;
     const startX = margin;
 
-    doc.setDrawColor(203, 213, 225); // slate-300
-    doc.setLineWidth(0.4);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
 
-    // Signature boxes
     const signatureBoxes = [
       { title: "SIPARIS ONAYI", subtitle: "Kase - Imza" },
       { title: "TEDARIKCI ONAYI", subtitle: "Kase - Imza" },
@@ -481,8 +563,8 @@ const handleCurrencyChange = (newCurrency: string) => {
     signatureBoxes.forEach((box, idx) => {
       const boxX = startX + (signBoxWidth + gap) * idx;
       
-      doc.setFillColor(248, 250, 252); // slate-50
-      doc.roundedRect(boxX, footerY, signBoxWidth, signBoxHeight, 3, 3, 'FD');
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(boxX, footerY, signBoxWidth, signBoxHeight, 2, 2, 'FD');
       
       doc.setFontSize(7);
       doc.setFont(fontName, "bold");
@@ -490,21 +572,30 @@ const handleCurrencyChange = (newCurrency: string) => {
       doc.text(box.title, boxX + signBoxWidth/2, footerY + 5, { align: "center" });
       
       doc.setFont(fontName, "normal");
-      doc.setTextColor(148, 163, 184); // slate-400
+      doc.setTextColor(148, 163, 184);
       doc.text(box.subtitle, boxX + signBoxWidth/2, footerY + signBoxHeight - 4, { align: "center" });
     });
 
+    // Contact closing
+    doc.setFontSize(8);
+    doc.setFont(fontName, "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("Iyi calismalar dileriz. Saygilarimizla,", pageWidth - margin, footerY + 6, { align: "right" });
+    doc.setTextColor(59, 130, 246);
+    doc.text("Hayrettin DAYAN", pageWidth - margin, footerY + 11, { align: "right" });
+
     // ===== FOOTER BAR =====
-    doc.setFillColor(15, 23, 42); // slate-900
-    doc.rect(0, pageHeight - 12, pageWidth, 12, 'F');
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, pageHeight - 10, pageWidth, 10, 'F');
     
     doc.setFontSize(7);
-    doc.setTextColor(148, 163, 184); // slate-400
-    doc.text("DAYAN DISLI SANAYI | www.dayandisli.com | info@dayandisli.com | +90 536 583 74 20", pageWidth / 2, pageHeight - 5, { align: "center" });
+    doc.setTextColor(148, 163, 184);
+    doc.text("DAYAN DISLI SANAYI | www.dayandisli.com | info@dayandisli.com | +90 536 583 74 20", pageWidth / 2, pageHeight - 4, { align: "center" });
 
     return doc;
   };
 
+  // PDF Download Handler
   const generatePDF = async () => {
     if (!firma || !ilgiliKisi) {
       toast({
@@ -518,10 +609,8 @@ const handleCurrencyChange = (newCurrency: string) => {
     setIsGenerating(true);
 
     try {
-      const { data, error } = await supabase.rpc("increment_monthly_counter");
-
-      if (error || !data) {
-        console.error("Counter error:", error);
+      const teklifNo = await getOrGenerateTeklifNo();
+      if (!teklifNo) {
         toast({
           title: "Sayaç Hatası",
           description: "Teklif numarası alınamadı!",
@@ -530,11 +619,9 @@ const handleCurrencyChange = (newCurrency: string) => {
         return;
       }
 
-      const formattedCounter = String(data).padStart(3, "0");
-      const now = new Date();
-      const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const teklifNo = `TR-DAYAN-${yearMonth}${formattedCounter}`;
       setCurrentTeklifNo(teklifNo);
+      setLastFinalizedTeklifNo(teklifNo);
+      markFormFinalized();
 
       const doc = createPDF(teklifNo);
       doc.save(teklifNo + ".pdf");
@@ -553,82 +640,180 @@ const handleCurrencyChange = (newCurrency: string) => {
       });
     } finally {
       setIsGenerating(false);
-      setProductChanged(false);
     }
   };
 
-  const openPreview = async (mode: "email" | "whatsapp") => {
-  if (!firma || !ilgiliKisi || (mode === "email" && !email)) {
-    toast({
-      title: "Eksik Bilgi",
-      description:
-        mode === "email"
-          ? "Firma, ilgili kişi ve e-posta zorunludur."
-          : "Firma ve ilgili kişi zorunludur.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setIsGenerating(true);
-  setShareMode(mode); // 💡 hangi akışta olduğumuzu kaydediyoruz
-
-  try {
-    const { data: counterData, error: counterError } = await supabase
-      .from("counter")
-      .select("value")
-      .eq("id", 1)
-      .single();
-
-    if (counterError || !counterData) {
-      throw new Error("Sayaç bilgisi alınamadı");
+  // Email Preview Handler
+  const handleEmailPreview = async () => {
+    if (!firma || !ilgiliKisi || !email) {
+      toast({
+        title: "Eksik Bilgi",
+        description: "Firma, ilgili kişi ve e-posta zorunludur.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    const currentCounter = counterData.value + 1;
-    const now = new Date();
-    const yearMonth = `${now.getFullYear()}${String(
-      now.getMonth() + 1
-    ).padStart(2, "0")}`;
-    const sayi = String(currentCounter).padStart(3, "0");
+    setIsGenerating(true);
 
-    const teklifNo = `TR-DAYAN-${yearMonth}${sayi}`;
-    setCurrentTeklifNo(teklifNo);
+    try {
+      const teklifNo = await getOrGenerateTeklifNo();
+      if (!teklifNo) {
+        throw new Error("Teklif numarası alınamadı");
+      }
 
-    const doc = createPDF(teklifNo);
-    const pdfOutput = doc.output("blob");
-    setPdfBlob(pdfOutput);
+      setCurrentTeklifNo(teklifNo);
 
-    const previewUrl = URL.createObjectURL(pdfOutput);
-    setPdfPreviewUrl(previewUrl);
+      const doc = createPDF(teklifNo);
+      const pdfOutput = doc.output("blob");
+      setPdfBlob(pdfOutput);
 
-    setShowEmailModal(true);
-  } catch (error) {
-    console.error(error);
-    toast({
-      title: "Hata",
-      description: "Önizleme oluşturulamadı!",
-      variant: "destructive",
-    });
-  } finally {
-    setIsGenerating(false);
-  }
-};
+      const previewUrl = URL.createObjectURL(pdfOutput);
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(previewUrl);
 
-// Modlar için kısa çağrılar
-const handleEmailPreview = () => openPreview("email");
-const handleWhatsAppPreview = () => {
-  setShareMode("whatsapp");
-  setShowEmailModal(true);
-};
+      setShowEmailModal(true);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Hata",
+        description: "Önizleme oluşturulamadı!",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
+  // Send Email Handler
+  const handleSendEmail = async () => {
+    if (!pdfBlob || !currentTeklifNo) {
+      toast({
+        title: "Hata",
+        description: "PDF hazır değil!",
+        variant: "destructive"
+      });
+      return;
+    }
 
+    setIsSendingEmail(true);
 
-  // WhatsApp Share Function with Web Share API
-  const handleWhatsAppShare = async () => {
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const base64 = result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfBlob);
+      });
+
+      const pdfBase64 = await base64Promise;
+
+      const { error } = await supabase.functions.invoke('send-quotation-email', {
+        body: {
+          to: email,
+          bcc: 'bediz@dayandisli.com',
+          subject: `${currentTeklifNo} No'lu Fiyat Teklifi`,
+          firma,
+          ilgiliKisi: formatName(ilgiliKisi),
+          tel,
+          konu,
+          products: products.map(p => ({
+            kod: p.kod,
+            cins: p.cins,
+            malzeme: p.malzeme,
+            miktar: p.miktar,
+            birim: p.birim,
+            birimFiyat: formatCurrency(p.birimFiyat, activeCurrency),
+            toplam: formatCurrency(calculateRowTotal(p), activeCurrency)
+          })),
+          araToplam: formatCurrency(calculateSubtotal(), activeCurrency),
+          kdv: formatCurrency(calculateKDV(), activeCurrency),
+          genelToplam: formatCurrency(calculateTotal(), activeCurrency),
+          notlar,
+          opsiyon,
+          teslimSuresi,
+          odemeSekli,
+          teslimYeri,
+          teklifNo: currentTeklifNo,
+          pdfBase64,
+          pdfFileName: `${currentTeklifNo}.pdf`
+        }
+      });
+
+      if (error) throw error;
+
+      // Mark as finalized after successful send
+      setLastFinalizedTeklifNo(currentTeklifNo);
+      markFormFinalized();
+
+      toast({
+        title: "E-posta Gönderildi",
+        description: `Teklif ${email} adresine başarıyla gönderildi.`,
+      });
+
+      setShowEmailModal(false);
+
+    } catch (error) {
+      console.error("Email send error:", error);
+      toast({
+        title: "Hata",
+        description: "E-posta gönderilemedi.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  // WhatsApp Preview Handler
+  const handleWhatsAppPreview = async () => {
     if (!firma || !ilgiliKisi) {
       toast({
         title: "Eksik Bilgi",
-        description: "Lütfen firma ve ilgili kişi bilgilerini doldurun.",
+        description: "Firma ve ilgili kişi zorunludur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      const teklifNo = await getOrGenerateTeklifNo();
+      if (!teklifNo) {
+        throw new Error("Teklif numarası alınamadı");
+      }
+
+      setCurrentTeklifNo(teklifNo);
+
+      const doc = createPDF(teklifNo);
+      const pdfOutput = doc.output("blob");
+      setPdfBlob(pdfOutput);
+
+      setShowWhatsAppModal(true);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Hata",
+        description: "WhatsApp önizlemesi oluşturulamadı!",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // WhatsApp Share Handler
+  const handleWhatsAppShare = async () => {
+    if (!pdfBlob || !currentTeklifNo) {
+      toast({
+        title: "Hata",
+        description: "PDF hazır değil!",
         variant: "destructive"
       });
       return;
@@ -637,41 +822,11 @@ const handleWhatsAppPreview = () => {
     setIsSendingWhatsApp(true);
 
     try {
-      // Generate teklif number
-      let teklifNo = currentTeklifNo;
-      // 🔥 WhatsApp gönderiminde sayaç burada artar
-const { data, error } = await supabase.rpc("increment_monthly_counter");
-if (error || !data) throw error;
+      const pdfFile = new File([pdfBlob], `${currentTeklifNo}.pdf`, { type: "application/pdf" });
 
-const updatedCounter = String(data).padStart(3, "0");
-const now = new Date();
-const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-teklifNo = `TR-DAYAN-${yearMonth}${updatedCounter}`;
-setCurrentTeklifNo(teklifNo);
-
-      
-      if (!teklifNo) {
-        const { data, error } = await supabase.rpc("increment_monthly_counter");
-if (error || !data) throw error;
-const formattedCounter = String(data).padStart(3, "0");
-
-        const yil = new Date().getFullYear();
-        const ay = String(new Date().getMonth() + 1).padStart(2, "0");
-        const sayi = String(currentCounter).padStart(3, "0");
-        teklifNo = `TR-DAYAN-${yil}${ay}${sayi}`;
-      }
-
-      // Create PDF
-      const doc = createPDF(teklifNo);
-      const pdfOutput = doc.output("blob");
-      
-      // Create File object from Blob
-      const pdfFile = new File([pdfOutput], `${teklifNo}.pdf`, { type: "application/pdf" });
-
-      // Message text
       const messageText = `Merhaba, fiyat teklifleri ekte yer almaktadır:
 
-📋 *Teklif No:* ${teklifNo}
+📋 *Teklif No:* ${currentTeklifNo}
 🏢 *Firma:* ${firma}
 👤 *İlgili:* ${formatName(ilgiliKisi)}
 💰 *Toplam:* ${formatCurrency(calculateTotal(), activeCurrency)}
@@ -686,16 +841,21 @@ DAYAN DİŞLİ SANAYİ
         try {
           await navigator.share({
             files: [pdfFile],
-            title: `${teklifNo} - Fiyat Teklifi`,
+            title: `${currentTeklifNo} - Fiyat Teklifi`,
             text: messageText
           });
           
+          // Mark as finalized after successful share
+          setLastFinalizedTeklifNo(currentTeklifNo);
+          markFormFinalized();
+
           toast({
             title: "Paylaşıldı",
-            description: "PDF başarıyla paylaşım için hazırlandı.",
+            description: "PDF başarıyla paylaşıldı.",
           });
+
+          setShowWhatsAppModal(false);
         } catch (shareError) {
-          // User cancelled or share failed - fallback to WhatsApp Web
           if ((shareError as Error).name !== 'AbortError') {
             throw shareError;
           }
@@ -704,7 +864,7 @@ DAYAN DİŞLİ SANAYİ
         // Fallback: Open WhatsApp Web with message only
         const fallbackMessage = encodeURIComponent(
           `Merhaba, fiyat teklifleri ekte yer almaktadır:\n\n` +
-          `📋 Teklif No: ${teklifNo}\n` +
+          `📋 Teklif No: ${currentTeklifNo}\n` +
           `🏢 Firma: ${firma}\n` +
           `👤 İlgili: ${formatName(ilgiliKisi)}\n` +
           `💰 Toplam: ${formatCurrency(calculateTotal(), activeCurrency)}\n\n` +
@@ -720,17 +880,23 @@ DAYAN DİŞLİ SANAYİ
 
         window.open(whatsappUrl, '_blank');
 
-        // Also download the PDF for manual attachment
+        // Download PDF for manual attachment
         const downloadLink = document.createElement('a');
-        downloadLink.href = URL.createObjectURL(pdfOutput);
-        downloadLink.download = `${teklifNo}.pdf`;
+        downloadLink.href = URL.createObjectURL(pdfBlob);
+        downloadLink.download = `${currentTeklifNo}.pdf`;
         downloadLink.click();
         URL.revokeObjectURL(downloadLink.href);
+
+        // Mark as finalized
+        setLastFinalizedTeklifNo(currentTeklifNo);
+        markFormFinalized();
 
         toast({
           title: "WhatsApp Açıldı",
           description: "PDF indirildi. WhatsApp'a manuel olarak ekleyebilirsiniz.",
         });
+
+        setShowWhatsAppModal(false);
       }
 
     } catch (error) {
@@ -784,17 +950,34 @@ DAYAN DİŞLİ SANAYİ
           <div className="mb-6 flex items-center gap-3 bg-blue-600/20 border border-blue-500/30 rounded-lg px-4 py-3">
             <FileText className="w-5 h-5 text-blue-400" />
             <span className="text-lg font-semibold text-white">Teklif No: {currentTeklifNo}</span>
+            {!formChanged && (
+              <span className="text-xs text-green-400 ml-2">(Kaydedildi)</span>
+            )}
           </div>
         )}
 
         {/* Customer Information */}
         <Card className="mb-6 bg-slate-800/50 border-slate-700">
           <CardHeader className="border-b border-slate-700/50">
-            <CardTitle className="text-white flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-blue-400" />
+            <CardTitle className="text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-blue-400" />
+                </div>
+                Müşteri Bilgileri
               </div>
-              Müşteri Bilgileri
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  loadCustomers();
+                  setShowCustomerModal(true);
+                }}
+                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Müşteri Seç
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
@@ -806,7 +989,7 @@ DAYAN DİŞLİ SANAYİ
                 <Input 
                   id="firma" 
                   value={firma} 
-                  onChange={(e) => setFirma(e.target.value)} 
+                  onChange={(e) => { setFirma(e.target.value); setFormChanged(true); }} 
                   placeholder="Firma adı"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -818,7 +1001,7 @@ DAYAN DİŞLİ SANAYİ
                 <Input 
                   id="ilgili" 
                   value={ilgiliKisi} 
-                  onChange={(e) => setIlgiliKisi(e.target.value)} 
+                  onChange={(e) => { setIlgiliKisi(e.target.value); setFormChanged(true); }} 
                   placeholder="Ad Soyad"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -830,7 +1013,7 @@ DAYAN DİŞLİ SANAYİ
                 <Input 
                   id="tel" 
                   value={tel} 
-                  onChange={(e) => setTel(e.target.value)} 
+                  onChange={(e) => { setTel(e.target.value); setFormChanged(true); }} 
                   placeholder="+90 XXX XXX XX XX"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -843,7 +1026,7 @@ DAYAN DİŞLİ SANAYİ
                   id="email" 
                   type="email" 
                   value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
+                  onChange={(e) => { setEmail(e.target.value); setFormChanged(true); }} 
                   placeholder="email@firma.com"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -855,7 +1038,7 @@ DAYAN DİŞLİ SANAYİ
                 <Input 
                   id="konu" 
                   value={konu} 
-                  onChange={(e) => setKonu(e.target.value)} 
+                  onChange={(e) => { setKonu(e.target.value); setFormChanged(true); }} 
                   placeholder="Teklif konusu"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -867,14 +1050,14 @@ DAYAN DİŞLİ SANAYİ
         {/* Product Table */}
         <Card className="mb-6 bg-slate-800/50 border-slate-700">
           <CardHeader className="border-b border-slate-700/50">
-            <CardTitle className="text-white flex items-center justify-between">
+            <CardTitle className="text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center">
                   <Package className="w-4 h-4 text-emerald-400" />
                 </div>
                 Ürün / Hizmet Tablosu
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                 {/* Global Currency Selector */}
                 <div className="flex items-center gap-2">
                   <Banknote className="w-4 h-4 text-slate-400" />
@@ -894,7 +1077,7 @@ DAYAN DİŞLİ SANAYİ
                 <Button 
                   size="sm" 
                   onClick={addRow}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap"
                 >
                   <Plus className="w-4 h-4 mr-1" /> Satır Ekle
                 </Button>
@@ -923,10 +1106,7 @@ DAYAN DİŞLİ SANAYİ
                     <td className="py-3 px-2">
                       <Input 
                         value={product.kod} 
-                        onChange={(e) => {
-                          setProductChanged(true);
-                          updateProduct(product.id, 'kod', e.target.value);
-                        }}
+                        onChange={(e) => updateProduct(product.id, 'kod', e.target.value)}
                         placeholder="Kod"
                         className="h-9 bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
                       />
@@ -934,19 +1114,13 @@ DAYAN DİŞLİ SANAYİ
                     <td className="py-3 px-2">
                       <Input 
                         value={product.cins} 
-                        onChange={(e) => {
-                          setProductChanged(true);
-                          updateProduct(product.id, 'cins', e.target.value);
-                        }}
+                        onChange={(e) => updateProduct(product.id, 'cins', e.target.value)}
                         placeholder="Açıklama"
                         className="h-9 bg-slate-900 border-slate-600 text-white placeholder:text-slate-500"
                       />
                     </td>
                     <td className="py-3 px-2">
-                      <Select value={product.malzeme} onValueChange={(v) => {
-                        setProductChanged(true);
-                        updateProduct(product.id, 'malzeme', v);
-                      }}>
+                      <Select value={product.malzeme} onValueChange={(v) => updateProduct(product.id, 'malzeme', v)}>
                         <SelectTrigger className="h-9 bg-slate-900 border-slate-600 text-white">
                           <SelectValue />
                         </SelectTrigger>
@@ -962,18 +1136,12 @@ DAYAN DİŞLİ SANAYİ
                         type="number" 
                         min="1"
                         value={product.miktar} 
-                        onChange={(e) => {
-                          setProductChanged(true);
-                          updateProduct(product.id, 'miktar', parseInt(e.target.value) || 0);
-                        }}
-                        className="h-9 w-20 bg-slate-900 border-slate-600 text-white"
+                        onChange={(e) => updateProduct(product.id, 'miktar', parseInt(e.target.value) || 1)}
+                        className="h-9 w-20 bg-slate-900 border-slate-600 text-white text-center"
                       />
                     </td>
                     <td className="py-3 px-2">
-                      <Select value={product.birim} onValueChange={(v) => {
-                        setProductChanged(true);
-                        updateProduct(product.id, 'birim', v);
-                      }}>
+                      <Select value={product.birim} onValueChange={(v) => updateProduct(product.id, 'birim', v)}>
                         <SelectTrigger className="h-9 w-24 bg-slate-900 border-slate-600 text-white">
                           <SelectValue />
                         </SelectTrigger>
@@ -990,14 +1158,11 @@ DAYAN DİŞLİ SANAYİ
                         min="0"
                         step="0.01"
                         value={product.birimFiyat} 
-                        onChange={(e) => {
-                          setProductChanged(true);
-                          updateProduct(product.id, 'birimFiyat', parseFloat(e.target.value) || 0);
-                        }}
-                        className="h-9 w-28 bg-slate-900 border-slate-600 text-white"
+                        onChange={(e) => updateProduct(product.id, 'birimFiyat', parseFloat(e.target.value) || 0)}
+                        className="h-9 w-28 bg-slate-900 border-slate-600 text-white text-right"
                       />
                     </td>
-                    <td className="py-3 px-2">
+                    <td className="py-3 px-2 text-right">
                       <span className="font-semibold text-emerald-400 font-mono">
                         {formatCurrency(calculateRowTotal(product), activeCurrency)}
                       </span>
@@ -1057,7 +1222,7 @@ DAYAN DİŞLİ SANAYİ
                 <Textarea 
                   id="notlar" 
                   value={notlar} 
-                  onChange={(e) => setNotlar(e.target.value)} 
+                  onChange={(e) => { setNotlar(e.target.value); setFormChanged(true); }} 
                   placeholder="Ek notlar..."
                   rows={3}
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
@@ -1070,7 +1235,7 @@ DAYAN DİŞLİ SANAYİ
                 <Input 
                   id="opsiyon" 
                   value={opsiyon} 
-                  onChange={(e) => setOpsiyon(e.target.value)} 
+                  onChange={(e) => { setOpsiyon(e.target.value); setFormChanged(true); }} 
                   placeholder="Opsiyon süresi"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -1082,7 +1247,7 @@ DAYAN DİŞLİ SANAYİ
                 <Input 
                   id="teslimSuresi" 
                   value={teslimSuresi} 
-                  onChange={(e) => setTeslimSuresi(e.target.value)} 
+                  onChange={(e) => { setTeslimSuresi(e.target.value); setFormChanged(true); }} 
                   placeholder="Örn: 15 iş günü"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -1094,7 +1259,7 @@ DAYAN DİŞLİ SANAYİ
                 <Input 
                   id="odemeSekli" 
                   value={odemeSekli} 
-                  onChange={(e) => setOdemeSekli(e.target.value)} 
+                  onChange={(e) => { setOdemeSekli(e.target.value); setFormChanged(true); }} 
                   placeholder="Örn: %50 peşin, %50 teslimde"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -1106,7 +1271,7 @@ DAYAN DİŞLİ SANAYİ
                 <Input 
                   id="teslimYeri" 
                   value={teslimYeri} 
-                  onChange={(e) => setTeslimYeri(e.target.value)} 
+                  onChange={(e) => { setTeslimYeri(e.target.value); setFormChanged(true); }} 
                   placeholder="Teslim adresi"
                   className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
                 />
@@ -1131,7 +1296,7 @@ DAYAN DİŞLİ SANAYİ
             ) : (
               <>
                 <FileDown className="w-5 h-5 mr-2" />
-                PDF İndir / Önizle
+                PDF İndir
               </>
             )}
           </Button>
@@ -1158,7 +1323,7 @@ DAYAN DİŞLİ SANAYİ
           <Button 
             size="lg" 
             onClick={handleWhatsAppPreview}
-            disabled={isSendingWhatsApp || !firma || !ilgiliKisi}
+            disabled={isGenerating || isSendingWhatsApp || !firma || !ilgiliKisi}
             className="bg-green-500 hover:bg-green-600 text-white px-8 h-14 text-base shadow-lg shadow-green-500/25"
           >
             {isSendingWhatsApp ? (
@@ -1190,69 +1355,209 @@ DAYAN DİŞLİ SANAYİ
 
       {/* Email Preview Modal */}
       <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-slate-800 border-slate-700">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col bg-slate-800 border-slate-700">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white">
               <Mail className="w-5 h-5 text-blue-400" />
-              PDF Önizleme - {currentTeklifNo}
+              E-posta Önizleme - {currentTeklifNo}
             </DialogTitle>
           </DialogHeader>
           
-          <div className="flex-1 min-h-0 my-4">
+          <div className="flex-1 min-h-0 my-4 space-y-4">
+            <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-400 mb-1">Alıcı:</p>
+                  <p className="text-white font-medium">{email}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 mb-1">BCC:</p>
+                  <p className="text-white font-medium">bediz@dayandisli.com</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-slate-400 mb-1">Konu:</p>
+                  <p className="text-white font-medium">{currentTeklifNo} No'lu Fiyat Teklifi</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <p className="text-slate-400 text-sm mb-2">Teklif Özeti:</p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-slate-400">Firma:</span>
+                  <span className="text-white ml-2">{firma}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400">İlgili:</span>
+                  <span className="text-white ml-2">{formatName(ilgiliKisi)}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-400">Toplam:</span>
+                  <span className="text-emerald-400 font-bold ml-2">{formatCurrency(calculateTotal(), activeCurrency)}</span>
+                </div>
+              </div>
+            </div>
+
             {pdfPreviewUrl && (
-              <iframe 
-                src={pdfPreviewUrl} 
-                className="w-full h-[500px] border border-slate-600 rounded-lg bg-white"
-                title="PDF Preview"
-              />
+              <div className="border border-slate-600 rounded-lg overflow-hidden">
+                <iframe 
+                  src={pdfPreviewUrl} 
+                  className="w-full h-[300px] bg-white"
+                  title="PDF Preview"
+                />
+              </div>
             )}
           </div>
           
-          <div className="bg-slate-900/50 p-4 rounded-lg mb-4 border border-slate-700">
-            <p className="text-sm text-slate-300">
-              <strong className="text-blue-400">Alıcı:</strong> {email}
-            </p>
-            <p className="text-sm text-slate-300">
-              <strong className="text-blue-400">BCC:</strong> bediz@dayandisli.com
-            </p>
-            <p className="text-sm text-slate-300">
-              <strong className="text-blue-400">Konu:</strong> {currentTeklifNo} No'lu Fiyat Teklifi
-            </p>
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEmailModal(false)}
+              disabled={isSendingEmail}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              <X className="w-4 h-4 mr-2" />
+              İptal
+            </Button>
+            <Button 
+              onClick={handleSendEmail}
+              disabled={isSendingEmail}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isSendingEmail ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Gönderiliyor...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Gönder
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WhatsApp Preview Modal */}
+      <Dialog open={showWhatsAppModal} onOpenChange={setShowWhatsAppModal}>
+        <DialogContent className="max-w-md bg-slate-800 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <MessageCircle className="w-5 h-5 text-green-400" />
+              WhatsApp Paylaşım - {currentTeklifNo}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Teklif No:</span>
+                  <span className="text-white font-mono">{currentTeklifNo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Firma:</span>
+                  <span className="text-white">{firma}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">İlgili:</span>
+                  <span className="text-white">{formatName(ilgiliKisi)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Toplam:</span>
+                  <span className="text-emerald-400 font-bold">{formatCurrency(calculateTotal(), activeCurrency)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3">
+              <p className="text-xs text-green-300 mb-2">Gönderilecek Mesaj:</p>
+              <p className="text-sm text-slate-300 italic">
+                "Merhaba, fiyat teklifleri ekte yer almaktadır:"
+              </p>
+            </div>
           </div>
           
           <DialogFooter className="gap-2">
-  <Button 
-    variant="outline" 
-    onClick={() => setShowEmailModal(false)}
-    disabled={isSendingEmail || isSendingWhatsApp}
-    className="border-slate-600 text-slate-300 hover:bg-slate-700"
-  >
-    İptal
-  </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowWhatsAppModal(false)}
+              disabled={isSendingWhatsApp}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              <X className="w-4 h-4 mr-2" />
+              İptal
+            </Button>
+            <Button 
+              onClick={handleWhatsAppShare}
+              disabled={isSendingWhatsApp}
+              className="bg-green-500 hover:bg-green-600 text-white"
+            >
+              {isSendingWhatsApp ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Paylaşılıyor...
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  WhatsApp ile Gönder
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-  {/* Eğer mod email ise mail gönder butonu */}
-  {shareMode === "email" && (
-    <Button 
-      onClick={handleSendEmail}
-      disabled={isSendingEmail}
-      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-    >
-      Gönder
-    </Button>
-  )}
-
-  {/* Eğer mod whatsapp ise whatsapp gönder butonu */}
-  {shareMode === "whatsapp" && (
-    <Button
-      onClick={handleWhatsAppShare}
-      disabled={isSendingWhatsApp}
-      className="bg-green-500 hover:bg-green-600 text-white"
-    >
-      WhatsApp ile Gönder
-    </Button>
-  )}
-</DialogFooter>
-
+      {/* Customer Selection Modal */}
+      <Dialog open={showCustomerModal} onOpenChange={setShowCustomerModal}>
+        <DialogContent className="max-w-md bg-slate-800 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <Users className="w-5 h-5 text-blue-400" />
+              Müşteri Seç
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {loadingCustomers ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+                <span className="ml-2 text-slate-400">Yükleniyor...</span>
+              </div>
+            ) : customers.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Kayıtlı müşteri bulunamadı.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {customers.map((customer) => (
+                  <button
+                    key={customer.id}
+                    onClick={() => selectCustomer(customer)}
+                    className="w-full p-3 text-left bg-slate-900/50 hover:bg-slate-700/50 border border-slate-700 rounded-lg transition-colors"
+                  >
+                    <p className="text-white font-medium">{customer.firma}</p>
+                    <p className="text-sm text-slate-400">{customer.ilgili_kisi} • {customer.email}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCustomerModal(false)}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              Kapat
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
