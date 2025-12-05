@@ -203,20 +203,27 @@ export default function Kargo() {
                                 <CommandItem
                                   key={c.id}
                                   value={c.short_name}
-                                  onSelect={() => {
-                                    const slug = slugifyForPdf(c.short_name);
-                                    setSelectedCustomerSlug(slug);
-                                    setSelectedName(c.short_name);
-                                    setSelectedCustomerId(c.id);
-                                    setOpen(false);
+                                  onSelect={async () => {
+  const slug = slugifyForPdf(c.short_name);
+  setSelectedCustomerSlug(slug);
 
-                                    const { data } = await supabase
-                                    .from("customers_full")
-                                    .select("name")
-                                    .eq("id", c.id)
-                                    .single();
-                                    setSelectedName(data?.name || "");
-                                  }}
+  // Üstte short_name gösterilecek
+  setSelectedName(c.short_name);
+  setSelectedCustomerId(c.id);
+  setOpen(false);
+
+  // Altta tam ad (name) gösterilecek
+  const { data } = await supabase
+    .from("customers_full")
+    .select("name")
+    .eq("id", c.id)
+    .single();
+
+  if (data?.name) {
+    setSelectedName(data.name);
+  }
+}}
+
                                   className="text-slate-200 hover:bg-slate-700/50 cursor-pointer aria-selected:bg-blue-600/20 aria-selected:text-blue-300"
                                 >
                                   {c.short_name}
