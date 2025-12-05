@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, html, fileBase64, fileName } = await req.json();
+    const { to, subject, html, pdfBase64, pdfFileName } = await req.json();
 
     const transporter = nodemailer.createTransport({
       host: smtpHost,
@@ -39,9 +39,10 @@ serve(async (req) => {
       html,
       attachments: [
         {
-          filename: fileName,
-          content: fileBase64,
+          filename: pdfFileName,
+          content: pdfBase64,
           encoding: "base64",
+          contentType: "application/pdf"
         },
       ],
     });
