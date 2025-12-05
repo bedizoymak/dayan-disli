@@ -27,7 +27,6 @@ type Customer = {
   phone?: string;
 };
 
-// Türkçe karakter normalize
 function normalize(text: string) {
   return text
     .toLowerCase()
@@ -39,239 +38,175 @@ function normalize(text: string) {
     .replace(/ü/g, "u");
 }
 
-// PDF adına uygun slug üretimi
-function slugifyForPdf(text: string) {
-  return normalize(text)
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 export default function Kargo() {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
-  const [selectedCustomerSlug, setSelectedCustomerSlug] = useState("");
+  const [selectedShortName, setSelectedShortName] = useState("");
   const [selectedName, setSelectedName] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState("");
+  const [selectedPhone, setSelectedPhone] = useState("");
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  // Müşterileri Supabase'den yükle
   useEffect(() => {
     const loadCustomers = async () => {
       setLoading(true);
+
       const { data, error } = await supabase
         .from("customers_full")
         .select("id, short_name, name")
         .order("short_name", { ascending: true });
 
-      if (!error && data) {
-        setCustomers(data);
-      }
+      if (!error && data) setCustomers(data);
       setLoading(false);
     };
 
     loadCustomers();
   }, []);
 
-  // Arama filtresi
   const filteredCustomers = customers.filter((c) =>
-    normalize(c.name || c.short_name).includes(normalize(search))
+    normalize(c.short_name).includes(normalize(search)) ||
+    normalize(c.name || "").includes(normalize(search))
   );
 
-  // PDF oluşturma
+  const handleCustomerSelect = async (c: Customer) => {
+    setSelectedShortName(c.short_name);
+    setSelectedCustomerId(c.id);
+    setOpen(false);
+
+    const { data } = await supabase
+      .from("customers_full")
+      .select("name, address, phone")
+      .eq("id", c.id)
+      .single();
+
+    setSelectedName(data?.name || c.short_name);
+    setSelectedAddress(data?.address || "");
+    setSelectedPhone(data?.phone || "");
+  };
+
   const handleGeneratePDF = async () => {
     if (!selectedCustomerId) return;
-
     setGenerating(true);
-    try {
-      const { data, error } = await supabase
-        .from("customers_full")
-        .select("name, short_name, address, phone")
-        .eq("id", selectedCustomerId)
-        .single();
 
-      if (error || !data) {
-        console.error("Supabase error:", error);
-        return;
-      }
+    const { data } = await supabase
+      .from("customers_full")
+      .select("name, short_name, address, phone")
+      .eq("id", selectedCustomerId)
+      .single();
 
-      const pdfBytes = await generateKargoPdf(data);
-      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-    } finally {
-      setGenerating(false);
-    }
+    const pdfBytes = await generateKargoPdf(data);
+    const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+
+    setGenerating(false);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-white tracking-tight">
-                  {t.kargo?.title || "Kargo Yönetimi"}
-                </h1>
-                <p className="text-xs text-slate-400">
-                  {t.kargo?.subtitle || "Müşteri Kargo Formu"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          {/* Page Title Card */}
-          <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              {t.kargo?.pageTitle || "Kargo Gönderim Formu"}
-            </h2>
-            <p className="text-slate-400">
-              {t.kargo?.pageDescription || "Müşteri seçerek kargo etiketini PDF olarak oluşturun"}
-            </p>
-          </div>
-
-          {/* Main Form Card */}
+          
+          {/* Dropdown */}
           <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-            <CardHeader className="border-b border-slate-700/50">
-              <CardTitle className="text-white flex items-center gap-2">
-                <Search className="w-5 h-5 text-blue-400" />
-                {t.kargo?.selectCustomer || "Müşteri Seçimi"}
-              </CardTitle>
+            <CardHeader>
+              <CardTitle className="text-white">Müşteri Seçimi</CardTitle>
               <CardDescription className="text-slate-400">
-                {t.kargo?.selectCustomerDescription || "Kargo göndermek istediğiniz müşteriyi seçin"}
+                Kargo göndermek istediğiniz müşteriyi seçin
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                    <p className="text-slate-400 text-sm">
-                      {t.kargo?.loading || "Müşteriler yükleniyor..."}
+
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between bg-slate-900/50 border-slate-600 text-slate-200 h-12"
+                  >
+                    {selectedShortName || "Müşteri Seçin"}
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  </Button>
+                </PopoverTrigger>
+
+                <PopoverContent className="w-full p-0 bg-slate-800 border-slate-700">
+                  <Command>
+                    <CommandInput
+                      placeholder="Ara..."
+                      value={search}
+                      onValueChange={setSearch}
+                      className="text-white"
+                    />
+                    <CommandList>
+                      <CommandEmpty className="text-slate-400 py-4 text-center">
+                        Sonuç bulunamadı
+                      </CommandEmpty>
+
+                      <CommandGroup>
+                        {filteredCustomers.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={c.short_name}
+                            onSelect={() => handleCustomerSelect(c)}
+                            className="text-slate-200"
+                          >
+                            {c.short_name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              {selectedName && (
+                <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                  <p className="text-sm text-slate-400">Seçilen Müşteri</p>
+                  <p className="text-white font-medium">{selectedName}</p>
+
+                  {selectedAddress && (
+                    <p className="text-slate-400 text-sm mt-2 whitespace-pre-line">
+                      {selectedAddress}
                     </p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Customer Dropdown */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300">
-                      {t.kargo?.customerLabel || "Müşteri"}
-                    </label>
-                    <Popover open={open} onOpenChange={setOpen}>
-                      <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="w-full justify-between bg-slate-900/50 border-slate-600 text-slate-200 hover:bg-slate-700/50 hover:text-white h-12"
-                        >
-                          <span className={selectedName ? "text-white" : "text-slate-400"}>
-                            {selectedName || (t.kargo?.selectPlaceholder || "Müşteri Seçin")}
-                          </span>
-                          <ChevronDown className="w-4 h-4 text-slate-400" />
-                        </Button>
-                      </PopoverTrigger>
-
-                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-slate-800 border-slate-700" align="start">
-                        <Command className="bg-transparent">
-                          <CommandInput
-                            placeholder={t.kargo?.searchPlaceholder || "Ara..."}
-                            value={search}
-                            onValueChange={setSearch}
-                            className="border-slate-700 text-white placeholder:text-slate-400"
-                          />
-                          <CommandList className="max-h-[300px]">
-                            <CommandEmpty className="py-6 text-center text-slate-400">
-                              {t.kargo?.noResults || "Sonuç bulunamadı."}
-                            </CommandEmpty>
-
-                            <CommandGroup>
-                              {filteredCustomers.map((c) => (
-                                <CommandItem
-                                  key={c.id}
-                                  value={c.short_name}
-                                  onSelect={() => {
-                                    const slug = slugifyForPdf(c.short_name);
-                                    setSelectedCustomerSlug(slug);
-                                    setSelectedName(c.short_name);
-                                    setSelectedCustomerId(c.id);
-                                    setOpen(false);
-                                  }}
-                                  className="text-slate-200 hover:bg-slate-700/50 cursor-pointer aria-selected:bg-blue-600/20 aria-selected:text-blue-300"
-                                >
-                                  {c.short_name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Selected Customer Info */}
-                  {selectedName && (
-                    <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50">
-                      <p className="text-sm text-slate-400 mb-1">
-                        {t.kargo?.selectedCustomer || "Seçilen Müşteri"}
-                      </p>
-                      <p className="text-white font-medium">{selectedName}</p>
-                    </div>
                   )}
 
-                  {/* Submit Button */}
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      onClick={handleGeneratePDF}
-                      disabled={!selectedCustomerId || generating}
-                      className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium px-6 h-12 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {generating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          {t.kargo?.generating || "Oluşturuluyor..."}
-                        </>
-                      ) : (
-                        <>
-                          <FileText className="w-4 h-4 mr-2" />
-                          {t.kargo?.generatePdf || "PDF Oluştur"}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </>
+                  {selectedPhone && (
+                    <p className="text-blue-400 text-sm mt-1">
+                      Tel: {selectedPhone}
+                    </p>
+                  )}
+                </div>
               )}
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleGeneratePDF}
+                  disabled={!selectedCustomerId || generating}
+                  className="bg-blue-600 hover:bg-blue-500 text-white h-12"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Oluşturuluyor...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4 mr-2" />
+                      PDF Oluştur
+                    </>
+                  )}
+                </Button>
+              </div>
+
             </CardContent>
           </Card>
-
-          {/* Help Text */}
-          <p className="text-center text-slate-500 text-sm mt-6">
-            {t.kargo?.helpText || "PDF yeni sekmede açılacaktır"}
-          </p>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-auto">
-        <div className="container mx-auto px-4 py-4">
-          <p className="text-center text-sm text-slate-500">
-            © {new Date().getFullYear()} Dayan Dişli Sanayi
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
