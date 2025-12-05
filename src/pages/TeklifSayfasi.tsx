@@ -722,17 +722,19 @@ const TeklifSayfasi = () => {
       const pdfBase64 = await base64Promise;
       const emailHtml = `
 <div style="font-family: Arial, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.6;">
+ <!-- LOGO -->
+  <div style="text-align: center; margin-bottom: 20px;">
+    <img src="https://dayandisli.com/logo-header.png"
+         alt="DAYAN Dişli Logo"
+         style="max-width: 240px; height: auto;" />
+  </div>
   <p><strong>Sayın ${formatName(ilgiliKisi)},</strong></p>
 
   <p>Tarafınıza hazırlanan fiyat teklifimiz ekte bilginize sunulmuştur.</p>
 
   <p><strong>Teklif No:</strong> <strong>${currentTeklifNo}</strong></p>
 
-  <br/>
-
   <p>Her türlü sorunuz için memnuniyetle yardımcı olmaktan mutluluk duyarız.</p>
-
-  <br/>
 
   <p>
     <strong>DAYAN DİŞLİ & PROFİL TAŞLAMA</strong><br/>
