@@ -58,6 +58,8 @@ export default function Kargo() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [selectedShortName, setSelectedShortName] = useState("");
+
 
   // Müşterileri Supabase'den yükle
   useEffect(() => {
@@ -207,22 +209,19 @@ export default function Kargo() {
   const slug = slugifyForPdf(c.short_name);
   setSelectedCustomerSlug(slug);
 
-  // Üstte short_name gösterilecek
-  setSelectedName(c.short_name);
++ setSelectedShortName(c.short_name);  // Üstte gösterilecek
   setSelectedCustomerId(c.id);
   setOpen(false);
 
-  // Altta tam ad (name) gösterilecek
   const { data } = await supabase
     .from("customers_full")
     .select("name")
     .eq("id", c.id)
     .single();
 
-  if (data?.name) {
-    setSelectedName(data.name);
-  }
+  setSelectedName(data?.name || "");  // Altta gösterilecek
 }}
+
 
                                   className="text-slate-200 hover:bg-slate-700/50 cursor-pointer aria-selected:bg-blue-600/20 aria-selected:text-blue-300"
                                 >
@@ -237,12 +236,12 @@ export default function Kargo() {
                   </div>
 
                   {/* Selected Customer Info */}
-                  {selectedName && (
+                  {selectedShortName && (
                     <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50">
                       <p className="text-sm text-slate-400 mb-1">
                         {t.kargo?.selectedCustomer || "Seçilen Müşteri"}
                       </p>
-                      <p className="text-white font-medium">{selectedName}</p>
+                      <p className="text-white font-medium">{selectedShortName}</p>
                     </div>
                   )}
 
