@@ -102,9 +102,24 @@ export default function Kargo() {
       }
 
       const pdfBytes = await generateKargoPdf(data);
-      const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+const blob = new Blob([new Uint8Array(pdfBytes)], { type: "application/pdf" });
+const url = URL.createObjectURL(blob);
+
+// 📍 Dosyayı indirmeye zorla (iOS/Android uyumlu)
+const link = document.createElement("a");
+link.href = url;
+link.download = `${data.short_name}-kargo.pdf`; 
+document.body.appendChild(link);
+link.click();
+link.remove();
+
+// 📍 Android’de otomatik görüntüleme
+if (/Android/i.test(navigator.userAgent)) {
+  setTimeout(() => {
+    window.open(url, "_blank");
+  }, 500);
+}
+
     } finally {
       setGenerating(false);
     }
