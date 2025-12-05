@@ -113,6 +113,14 @@ const TeklifSayfasi = () => {
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const filteredCustomers = customers.filter(c =>
+  (c.firma?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+  (c.ilgili_kisi?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+  (c.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+);
+
+
 
   // Get form snapshot for change detection
   const getFormSnapshot = () => {
@@ -1523,19 +1531,30 @@ DAYAN DİŞLİ SANAYİ
           </DialogHeader>
           
           <div className="py-4">
+
+  {/* ARAMA KUTUSU → BURAYA EKLENİYOR */}
+  <div className="mb-3">
+    <Input
+      placeholder="Ara: firma, kişi veya e-posta..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="bg-slate-900 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500"
+    />
+  </div>
+
             {loadingCustomers ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
                 <span className="ml-2 text-slate-400">Yükleniyor...</span>
               </div>
-            ) : customers.length === 0 ? (
+            ) : filteredCustomers.length === 0 ? (
               <div className="text-center py-8 text-slate-400">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Kayıtlı müşteri bulunamadı.</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {customers.map((customer) => (
+                {filteredCustomers.map((customer) => (
                   <button
                     key={customer.id}
                     onClick={() => selectCustomer(customer)}
