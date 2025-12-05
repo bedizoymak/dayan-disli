@@ -723,9 +723,9 @@ const TeklifSayfasi = () => {
       const emailHtml = `
 <div style="font-family: Arial, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.6;">
  
-  <p><strong>Sayın ${formatName(ilgiliKisi)},</strong></p>
+  <p><strong>Sayın ${formatName(ilgiliKisi)},</strong></p><br/>
 
-  <p>Tarafınıza hazırlanan fiyat teklifimiz ekte bilginize sunulmuştur.</p><br/>
+  <p>Tarafınıza hazırlanan fiyat teklifimiz ekte bilginize sunulmuştur.</p>
 
   <p><strong>Teklif No:</strong> <strong>${currentTeklifNo}</strong></p><br/>
 
@@ -735,7 +735,7 @@ const TeklifSayfasi = () => {
 
   <p>
   <!-- LOGO -->
-  <div style="text-align: center; margin-bottom: 20px;">
+  <div style="text-align: left; margin-bottom: 20px;">
     <img src="https://dayandisli.com/logo-header.png"
          alt="DAYAN Dişli Logo"
          style="max-width: 240px; height: auto;" />
