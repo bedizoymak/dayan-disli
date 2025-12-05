@@ -209,6 +209,13 @@ export default function Kargo() {
                                     setSelectedName(c.short_name);
                                     setSelectedCustomerId(c.id);
                                     setOpen(false);
+
+                                    const { data } = await supabase
+                                    .from("customers_full")
+                                    .select("name")
+                                    .eq("id", c.id)
+                                    .single();
+                                    setSelectedName(data?.name || "");
                                   }}
                                   className="text-slate-200 hover:bg-slate-700/50 cursor-pointer aria-selected:bg-blue-600/20 aria-selected:text-blue-300"
                                 >
