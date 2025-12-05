@@ -256,11 +256,6 @@ export default function Kargo() {
               )}
             </CardContent>
           </Card>
-
-          {/* Help Text */}
-          <p className="text-center text-slate-500 text-sm mt-6">
-            {t.kargo?.helpText || "PDF yeni sekmede açılacaktır"}
-          </p>
         </div>
       </main>
 
@@ -268,7 +263,7 @@ export default function Kargo() {
       <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-auto">
         <div className="container mx-auto px-4 py-4">
           <p className="text-center text-sm text-slate-500">
-            © {new Date().getFullYear()} Dayan Dişli Sanayi
+            © {new Date().getFullYear()} DAYAN DİŞLİ SANAYİ | İkitelli O.S.B. Çevre Sanayi Sitesi, 8. Blok No: 45/47 Başakşehir / İstanbul <br /> Tel: +90 536 583 74 20 | E-mail: info@dayandisli.com | Web: dayandisli.com
           </p>
         </div>
       </footer>
