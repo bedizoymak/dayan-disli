@@ -745,30 +745,41 @@ const TeklifSayfasi = () => {
 
 
       const { error } = await supabase.functions.invoke('send-quotation-email', {
-        body: {
-  to: email,
-  bcc: 'bediz@dayandisli.com',
-  subject: `${currentTeklifNo} No'lu Fiyat Teklifi`,
-  html: emailHtml, // 🚀 EKLEDİĞİMİZ SATIR
-  firma,
-  ilgiliKisi: formatName(ilgiliKisi),
-  tel,
-  konu,
-  products: products.map(...),
-  araToplam,
-  kdv,
-  genelToplam,
-  notlar,
-  opsiyon,
-  teslimSuresi,
-  odemeSekli,
-  teslimYeri,
-  teklifNo: currentTeklifNo,
-  pdfBase64,
-  pdfFileName: `${currentTeklifNo}.pdf`
-}
+  body: {
+    to: email,
+    bcc: 'bediz@dayandisli.com',
+    subject: `${currentTeklifNo} No'lu Fiyat Teklifi`,
+    html: emailHtml,
+    firma,
+    ilgiliKisi: formatName(ilgiliKisi),
+    tel,
+    konu,
 
-      });
+    // 🔽 BURAYA YAPIŞTIR
+    products: products.map(p => ({
+      kod: p.kod,
+      cins: p.cins,
+      malzeme: p.malzeme,
+      miktar: p.miktar,
+      birim: p.birim,
+      birimFiyat: formatCurrency(p.birimFiyat, activeCurrency),
+      toplam: formatCurrency(calculateRowTotal(p), activeCurrency)
+    })),
+
+    araToplam: formatCurrency(calculateSubtotal(), activeCurrency),
+    kdv: formatCurrency(calculateKDV(), activeCurrency),
+    genelToplam: formatCurrency(calculateTotal(), activeCurrency),
+    notlar,
+    opsiyon,
+    teslimSuresi,
+    odemeSekli,
+    teslimYeri,
+    teklifNo: currentTeklifNo,
+    pdfBase64,
+    pdfFileName: `${currentTeklifNo}.pdf`
+  }
+});
+
 
       if (error) throw error;
 
