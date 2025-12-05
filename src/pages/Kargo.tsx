@@ -206,7 +206,7 @@ export default function Kargo() {
                                   onSelect={() => {
                                     const slug = slugifyForPdf(c.short_name);
                                     setSelectedCustomerSlug(slug);
-                                    setSelectedName(c.name || c.short_name);
+                                    setSelectedName(c.short_name);
                                     setSelectedCustomerId(c.id);
                                     setOpen(false);
                                   }}
