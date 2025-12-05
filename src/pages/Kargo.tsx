@@ -65,7 +65,7 @@ export default function Kargo() {
       setLoading(true);
       const { data, error } = await supabase
         .from("customers_full")
-        .select("id, short_name")
+        .select("id, short_name, name")
         .order("short_name", { ascending: true });
 
       if (!error && data) {
