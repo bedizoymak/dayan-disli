@@ -13,54 +13,66 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // Kullanıcının hedef sayfasını kaydet
+    const checkAccess = async () => {
       localStorage.setItem("auth_redirect_path", location.pathname);
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // 1️⃣ Güvenlik ayarı oku
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("settings")
+        .select("auth_enabled")
+        .eq("id", 1)
+        .single();
 
-      // Oturum yoksa login'e yönlendir
+      if (settingsError) {
+        console.error("Settings error:", settingsError);
+      }
+
+      // Eğer güvenlik kapalıysa → direkt erişim ver
+      if (settingsData?.auth_enabled === false) {
+        setIsAuthenticated(true);
+        setIsAllowed(true);
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Oturum kontrolü
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session?.user?.email) {
-        setIsAuthenticated(false);
-        setIsAllowed(false);
         setLoading(false);
         return;
       }
 
-      // Whitelist kontrolü
-      const { data, error } = await supabase.rpc("is_email_allowed", {
-        check_email: session.user.email,
-      });
+      // 3️⃣ Whitelist kontrolü
+      const { data: allow, error: wlError } = await supabase.rpc(
+        "is_email_allowed",
+        { check_email: session.user.email }
+      );
 
-      if (error) {
-        console.error("Whitelist kontrol hatası:", error);
+      if (wlError) {
+        console.error("Whitelist kontrol hatası:", wlError);
         await supabase.auth.signOut();
-        setIsAuthenticated(false);
-        setIsAllowed(false);
         setLoading(false);
         return;
       }
 
-      if (data === true) {
+      if (allow === true) {
         setIsAuthenticated(true);
         setIsAllowed(true);
       } else {
         await supabase.auth.signOut();
-        setIsAuthenticated(false);
-        setIsAllowed(false);
       }
 
       setLoading(false);
     };
 
-    checkAuth();
+    checkAccess();
   }, [location.pathname]);
 
-  if (loading) {
-    return null; // burada bir skeleton veya spinner gösterilebilir
-  }
+  if (loading) return null;
 
-  // Erişim yok → login sayfasına yönlendir
   if (!isAuthenticated || !isAllowed) {
     return <Navigate to="/login" replace />;
   }
