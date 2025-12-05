@@ -65,7 +65,7 @@ export default function Kargo() {
       setLoading(true);
       const { data, error } = await supabase
         .from("customers_full")
-        .select("id, short_name")
+        .select("id, short_name, name")
         .order("short_name", { ascending: true });
 
       if (!error && data) {
@@ -79,7 +79,7 @@ export default function Kargo() {
 
   // Arama filtresi
   const filteredCustomers = customers.filter((c) =>
-    normalize(c.short_name).includes(normalize(search))
+    normalize(c.name || c.short_name).includes(normalize(search))
   );
 
   // PDF oluşturma
@@ -206,7 +206,7 @@ export default function Kargo() {
                                   onSelect={() => {
                                     const slug = slugifyForPdf(c.short_name);
                                     setSelectedCustomerSlug(slug);
-                                    setSelectedName(c.short_name);
+                                    setSelectedName(c.name || c.short_name);
                                     setSelectedCustomerId(c.id);
                                     setOpen(false);
                                   }}
