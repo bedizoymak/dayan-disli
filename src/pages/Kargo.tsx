@@ -181,7 +181,7 @@ export default function Kargo() {
                           className="w-full justify-between bg-slate-900/50 border-slate-600 text-slate-200 hover:bg-slate-700/50 hover:text-white h-12"
                         >
                           <span className={selectedName ? "text-white" : "text-slate-400"}>
-                            {selectedName || (t.kargo?.selectPlaceholder || "Müşteri Seçin")}
+                            {selectedShortName || (t.kargo?.selectPlaceholder || "Müşteri Seçin")}
                           </span>
                           <ChevronDown className="w-4 h-4 text-slate-400" />
                         </Button>
