@@ -55,7 +55,6 @@ export default function Kargo() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [selectedCustomerSlug, setSelectedCustomerSlug] = useState("");
   const [selectedName, setSelectedName] = useState("");
-  const [selectedShortName, setSelectedShortName] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -66,7 +65,7 @@ export default function Kargo() {
       setLoading(true);
       const { data, error } = await supabase
         .from("customers_full")
-        .select("id, short_name, name")
+        .select("id, short_name")
         .order("short_name", { ascending: true });
 
       if (!error && data) {
@@ -80,7 +79,7 @@ export default function Kargo() {
 
   // Arama filtresi
   const filteredCustomers = customers.filter((c) =>
-    normalize(c.name || c.short_name).includes(normalize(search))
+    normalize(c.short_name).includes(normalize(search))
   );
 
   // PDF oluşturma
@@ -179,8 +178,8 @@ export default function Kargo() {
                           variant="outline" 
                           className="w-full justify-between bg-slate-900/50 border-slate-600 text-slate-200 hover:bg-slate-700/50 hover:text-white h-12"
                         >
-                          <span className={selectedShortName ? "text-white" : "text-slate-400"}>
-                            {selectedShortName || (t.kargo?.selectPlaceholder || "Müşteri Seçin")}
+                          <span className={selectedName ? "text-white" : "text-slate-400"}>
+                            {selectedName || (t.kargo?.selectPlaceholder || "Müşteri Seçin")}
                           </span>
                           <ChevronDown className="w-4 h-4 text-slate-400" />
                         </Button>
@@ -205,16 +204,12 @@ export default function Kargo() {
                                   key={c.id}
                                   value={c.short_name}
                                   onSelect={() => {
-  const slug = slugifyForPdf(c.short_name);
-  setSelectedCustomerSlug(slug);
-
-+ setSelectedShortName(c.short_name);  // Üstte gözükecek olan
-- setSelectedName(c.short_name);       // Bu satırı SİL
-+ setSelectedCustomerId(c.id);
-
-  setOpen(false);
-}}
-
+                                    const slug = slugifyForPdf(c.short_name);
+                                    setSelectedCustomerSlug(slug);
+                                    setSelectedName(c.short_name);
+                                    setSelectedCustomerId(c.id);
+                                    setOpen(false);
+                                  }}
                                   className="text-slate-200 hover:bg-slate-700/50 cursor-pointer aria-selected:bg-blue-600/20 aria-selected:text-blue-300"
                                 >
                                   {c.short_name}
