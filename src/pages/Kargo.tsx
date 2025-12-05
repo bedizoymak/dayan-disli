@@ -241,7 +241,7 @@ export default function Kargo() {
                       <p className="text-sm text-slate-400 mb-1">
                         {t.kargo?.selectedCustomer || "Seçilen Müşteri"}
                       </p>
-                      <p className="text-white font-medium">{selectedShortName}</p>
+                      <p className="text-white font-medium">{selectedName}</p>
                     </div>
                   )}
 
