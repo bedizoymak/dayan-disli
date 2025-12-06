@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Scale, Package, CircleDollarSign, Cylinder, CircleDot, RectangleHorizontal } from "lucide-react";
+import { Scale, Package, CircleDollarSign, Cylinder, CircleDot, RectangleHorizontal, Hash } from "lucide-react";
 
 // Geometry types
 const GEOMETRY_TYPES = {
@@ -45,6 +45,8 @@ interface WeightResult {
   volumeCm3: number;
   weightGrams: number;
   weightKg: number;
+  totalWeightGrams: number;
+  totalWeightKg: number;
 }
 
 export default function WeightCalculation() {
@@ -69,6 +71,9 @@ export default function WeightCalculation() {
   
   // Price
   const [pricePerKg, setPricePerKg] = useState<string>("");
+  
+  // Quantity
+  const [quantity, setQuantity] = useState<string>("1");
   
   // Result
   const [result, setResult] = useState<WeightResult | null>(null);
@@ -127,17 +132,23 @@ export default function WeightCalculation() {
       return;
     }
 
+    const quantityValue = Math.max(1, parseInt(quantity) || 1);
+
     const volumeCm3 = volumeMm3 / 1000;
     const weightGrams = volumeCm3 * density;
     const weightKg = weightGrams / 1000;
+    const totalWeightGrams = weightGrams * quantityValue;
+    const totalWeightKg = weightKg * quantityValue;
 
     setResult({
       volumeMm3,
       volumeCm3,
       weightGrams,
       weightKg,
+      totalWeightGrams,
+      totalWeightKg,
     });
-  }, [geometry, diameter, length, outerDiameter, innerDiameter, width, height, material, customDensity]);
+  }, [geometry, diameter, length, outerDiameter, innerDiameter, width, height, material, customDensity, quantity]);
 
   const currentDensity =
     material === "custom"
@@ -145,8 +156,10 @@ export default function WeightCalculation() {
       : materialOptions.find((m) => m.value === material)?.density || 7.85;
 
   const priceValue = parseFloat(pricePerKg);
+  const quantityValue = Math.max(1, parseInt(quantity) || 1);
   const showCost = result && !isNaN(priceValue) && priceValue > 0;
-  const totalCost = showCost ? result.weightKg * priceValue : 0;
+  const singleCost = showCost ? result.weightKg * priceValue : 0;
+  const totalCost = showCost ? singleCost * quantityValue : 0;
 
   const getFormulaText = () => {
     switch (geometry) {
@@ -379,21 +392,39 @@ export default function WeightCalculation() {
                 </div>
               )}
 
-              {/* Price Per Kg */}
-              <div className="space-y-2">
-                <Label htmlFor="pricePerKg" className="text-slate-300">
-                  Malzeme Fiyatı (TL/kg)
-                </Label>
-                <Input
-                  id="pricePerKg"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={pricePerKg}
-                  onChange={(e) => setPricePerKg(e.target.value)}
-                  className="bg-slate-900 border-slate-600 text-white"
-                  placeholder="Opsiyonel"
-                />
+              {/* Price Per Kg and Quantity */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pricePerKg" className="text-slate-300">
+                    Malzeme Fiyatı (TL/kg)
+                  </Label>
+                  <Input
+                    id="pricePerKg"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={pricePerKg}
+                    onChange={(e) => setPricePerKg(e.target.value)}
+                    className="bg-slate-900 border-slate-600 text-white"
+                    placeholder="Opsiyonel"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quantity" className="text-slate-300 flex items-center gap-1">
+                    <Hash className="w-3.5 h-3.5" />
+                    Adet
+                  </Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    step="1"
+                    min="1"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    className="bg-slate-900 border-slate-600 text-white"
+                    placeholder="1"
+                  />
+                </div>
               </div>
 
               {/* Current Density Display */}
@@ -417,14 +448,31 @@ export default function WeightCalculation() {
                 <p className="text-red-400 text-center py-8">{validationError}</p>
               ) : result ? (
                 <div className="text-center py-4">
-                  <p className="text-sm text-slate-400 mb-2">Tahmini Ağırlık</p>
-                  <p className="text-5xl font-bold text-white mb-2">
+                  {/* Single Item Weight */}
+                  <p className="text-sm text-slate-400 mb-2">Birim Ağırlık</p>
+                  <p className="text-3xl font-bold text-white mb-1">
                     {result.weightKg.toFixed(2)}
-                    <span className="text-2xl text-slate-400 ml-2">kg</span>
+                    <span className="text-xl text-slate-400 ml-2">kg</span>
                   </p>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-500 mb-4">
                     ({result.weightGrams.toFixed(1)} gram)
                   </p>
+
+                  {/* Total Weight - only show if quantity > 1 */}
+                  {quantityValue > 1 && (
+                    <>
+                      <div className="border-t border-slate-700/50 my-4" />
+                      <p className="text-sm text-emerald-400 mb-2">Toplam Ağırlık ({quantityValue} Adet)</p>
+                      <p className="text-4xl font-bold text-white mb-1">
+                        {result.totalWeightKg.toFixed(2)}
+                        <span className="text-xl text-slate-400 ml-2">kg</span>
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        ({result.totalWeightGrams.toFixed(1)} gram)
+                      </p>
+                    </>
+                  )}
+
                   <div className="mt-6 pt-4 border-t border-slate-700/50">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -466,7 +514,7 @@ export default function WeightCalculation() {
                     <span className="text-2xl text-slate-400 ml-2">TL</span>
                   </p>
                   <p className="text-sm text-slate-500">
-                    ({result!.weightKg.toFixed(2)} kg × {priceValue.toFixed(2)} TL/kg)
+                    ({result!.weightKg.toFixed(2)} kg × {priceValue.toFixed(2)} TL/kg{quantityValue > 1 ? ` × ${quantityValue} Adet` : ''})
                   </p>
                 </div>
               </CardContent>
