@@ -14,7 +14,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Apps from "./pages/Apps";
 import Kargo from "./pages/Kargo";
-import TeklifSayfasi from "./pages/TeklifSayfasi";
+import TeklifSayfasi from "./features/quotation";
 import { CalculatorRoutes } from "./calculator";
 
 const queryClient = new QueryClient();
