@@ -23,7 +23,7 @@ const GEOMETRY_TYPES = {
 type GeometryType = typeof GEOMETRY_TYPES[keyof typeof GEOMETRY_TYPES];
 
 const geometryOptions = [
-  { value: GEOMETRY_TYPES.SOLID, label: "Silindirik Mil", icon: Cylinder },
+  { value: GEOMETRY_TYPES.SOLID, label: "Silindir", icon: Cylinder },
   { value: GEOMETRY_TYPES.PIPE, label: "Boru", icon: CircleDot },
   { value: GEOMETRY_TYPES.FLAT, label: "Lama", icon: RectangleHorizontal },
 ];
