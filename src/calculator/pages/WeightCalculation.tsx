@@ -500,26 +500,46 @@ export default function WeightCalculation() {
 
           {/* Cost Card */}
           {showCost && (
-            <Card className="bg-gradient-to-br from-amber-900/30 to-slate-800/50 border-amber-700/50">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <CircleDollarSign className="w-5 h-5 text-amber-400" />
-                  Toplam Maliyet
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-4">
-                  <p className="text-5xl font-bold text-white mb-2">
-                    {totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    <span className="text-2xl text-slate-400 ml-2">TL</span>
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    ({result!.weightKg.toFixed(2)} kg × {priceValue.toFixed(2)} TL/kg{quantityValue > 1 ? ` × ${quantityValue} Adet` : ''})
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+  <Card className="bg-gradient-to-br from-amber-900/30 to-slate-800/50 border-amber-700/50">
+    <CardHeader>
+      <CardTitle className="text-white flex items-center gap-2">
+        <CircleDollarSign className="w-5 h-5 text-amber-400" />
+        Toplam Maliyet
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-center py-4">
+        {/* Toplam maliyet */}
+        <p className="text-5xl font-bold text-white mb-2">
+          {totalCost.toLocaleString("tr-TR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+          <span className="text-2xl text-slate-400 ml-2">TL</span>
+        </p>
+
+        {/* Birim maliyet satırı */}
+        <p className="text-sm text-slate-400 mb-1">
+          Birim Maliyet
+        </p>
+        <p className="text-xl font-semibold text-white mb-4">
+          {singleCost.toLocaleString("tr-TR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}{" "}
+          TL / adet
+        </p>
+
+        {/* Ayrıntılı formül kırılımı */}
+        <p className="text-sm text-slate-500">
+          ({result!.weightKg.toFixed(2)} kg × {priceValue.toFixed(2)} TL/kg
+          {quantityValue > 1 ? ` × ${quantityValue} Adet` : ""})
+        </p>
+      </div>
+    </CardContent>
+  </Card>
+)}
+
 
           {/* Formula Info */}
           <div className="text-sm text-slate-500 text-center space-y-1">
