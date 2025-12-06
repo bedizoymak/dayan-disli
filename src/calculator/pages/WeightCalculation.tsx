@@ -436,67 +436,53 @@ export default function WeightCalculation() {
           </Card>
 
           {/* Result */}
-          <Card className="bg-gradient-to-br from-emerald-900/30 to-slate-800/50 border-emerald-700/50">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Package className="w-5 h-5 text-emerald-400" />
-                Sonuç
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {validationError ? (
-                <p className="text-red-400 text-center py-8">{validationError}</p>
-              ) : result ? (
-                <div className="text-center py-4">
-                  {/* Single Item Weight */}
-                  <p className="text-sm text-slate-400 mb-2">Birim Ağırlık</p>
-                  <p className="text-3xl font-bold text-white mb-1">
-                    {result.weightKg.toFixed(2)}
-                    <span className="text-xl text-slate-400 ml-2">kg</span>
-                  </p>
-                  <p className="text-sm text-slate-500 mb-4">
-                    ({result.weightGrams.toFixed(1)} gram)
-                  </p>
+<Card className="bg-gradient-to-br from-emerald-900/30 to-slate-800/50 border-emerald-700/50">
+  <CardHeader>
+    <CardTitle className="text-white flex items-center gap-2">
+      <Package className="w-5 h-5 text-emerald-400" />
+      Sonuç
+    </CardTitle>
+  </CardHeader>
+  <CardContent>
+    {validationError ? (
+      <p className="text-red-400 text-center py-8">{validationError}</p>
+    ) : result ? (
+      <div className="text-center py-4">
+        {/* Single Item Weight */}
+        <p className="text-sm text-slate-400 mb-2">Birim Ağırlık</p>
+        <p className="text-3xl font-bold text-white mb-1">
+          {result.weightKg.toFixed(2)}
+          <span className="text-xl text-slate-400 ml-2">kg</span>
+        </p>
+        <p className="text-sm text-slate-500 mb-4">
+          ({result.weightGrams.toFixed(1)} gram)
+        </p>
 
-                  {/* Total Weight - only show if quantity > 1 */}
-                  {quantityValue > 1 && (
-                    <>
-                      <div className="border-t border-slate-700/50 my-4" />
-                      <p className="text-sm text-emerald-400 mb-2">Toplam Ağırlık ({quantityValue} Adet)</p>
-                      <p className="text-4xl font-bold text-white mb-1">
-                        {result.totalWeightKg.toFixed(2)}
-                        <span className="text-xl text-slate-400 ml-2">kg</span>
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        ({result.totalWeightGrams.toFixed(1)} gram)
-                      </p>
-                    </>
-                  )}
+        {/* Total Weight - only show if quantity > 1 */}
+        {quantityValue > 1 && (
+          <>
+            <div className="border-t border-slate-700/50 my-4" />
+            <p className="text-sm text-emerald-400 mb-2">
+              Toplam Ağırlık ({quantityValue} Adet)
+            </p>
+            <p className="text-4xl font-bold text-white mb-1">
+              {result.totalWeightKg.toFixed(2)}
+              <span className="text-xl text-slate-400 ml-2">kg</span>
+            </p>
+            <p className="text-sm text-slate-500">
+              ({result.totalWeightGrams.toFixed(1)} gram)
+            </p>
+          </>
+        )}
+      </div>
+    ) : (
+      <p className="text-slate-400 text-center py-8">
+        Geçerli parametreler girin
+      </p>
+    )}
+  </CardContent>
+</Card>
 
-                  <div className="mt-6 pt-4 border-t border-slate-700/50">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-slate-400">Hacim</p>
-                        <p className="text-white font-mono">
-                          {result.volumeCm3.toFixed(2)} cm³
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Hacim (mm³)</p>
-                        <p className="text-white font-mono">
-                          {result.volumeMm3.toFixed(2)} mm³
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-slate-400 text-center py-8">
-                  Geçerli parametreler girin
-                </p>
-              )}
-            </CardContent>
-          </Card>
 
           {/* Cost Card */}
           {showCost && (
