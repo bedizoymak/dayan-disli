@@ -1,0 +1,432 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { FileText, ArrowLeft } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
+import { useQuotationForm } from "./hooks/useQuotationForm";
+import { useQuotationPDF } from "./hooks/useQuotationPDF";
+import { CustomerInfoSection } from "./components/CustomerInfoSection";
+import { ProductTableSection } from "./components/ProductTableSection";
+import { FooterFieldsSection } from "./components/FooterFieldsSection";
+import { ActionButtons } from "./components/ActionButtons";
+import { EmailPreviewModal } from "./components/EmailPreviewModal";
+import { WhatsAppPreviewModal } from "./components/WhatsAppPreviewModal";
+import { CustomerSelectionModal } from "./components/CustomerSelectionModal";
+import { CustomerProfile } from "./types";
+
+const TeklifPage = () => {
+  const { toast } = useToast();
+  
+  // Form state management
+  const form = useQuotationForm();
+  const pdf = useQuotationPDF();
+  
+  // Modal state
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  
+  // Customer autofill state
+  const [customers, setCustomers] = useState<CustomerProfile[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Load customers from Supabase
+  const loadCustomers = async () => {
+    setLoadingCustomers(true);
+    try {
+      const { data, error } = await supabase
+        .from('customer_profile')
+        .select('*')
+        .order('firma', { ascending: true });
+      
+      if (error) throw error;
+      setCustomers(data || []);
+    } catch (error) {
+      console.error('Failed to load customers:', error);
+      toast({
+        title: "Hata",
+        description: "Müşteri listesi yüklenemedi.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingCustomers(false);
+    }
+  };
+
+  // Select customer and autofill
+  const selectCustomer = (customer: CustomerProfile) => {
+    form.setFirma(customer.firma || "");
+    form.setIlgiliKisi(customer.ilgili_kisi || "");
+    form.setTel(customer.telefon || "");
+    form.setEmail(customer.email || "");
+    form.setKonu(customer.konu || "");
+    setShowCustomerModal(false);
+    
+    toast({
+      title: "Müşteri Seçildi",
+      description: `${customer.firma} bilgileri dolduruldu.`,
+    });
+  };
+
+  // Get form data for PDF generation
+  const getFormData = () => ({
+    firma: form.firma,
+    ilgiliKisi: form.ilgiliKisi,
+    tel: form.tel,
+    email: form.email,
+    konu: form.konu,
+    products: form.products,
+    activeCurrency: form.activeCurrency,
+    notlar: form.notlar,
+    opsiyon: form.opsiyon,
+    teslimSuresi: form.teslimSuresi,
+    odemeSekli: form.odemeSekli,
+    teslimYeri: form.teslimYeri,
+  });
+
+  // PDF Download Handler
+  const handleGeneratePDF = async () => {
+    if (!form.firma || !form.ilgiliKisi) {
+      toast({
+        title: "Eksik Bilgi",
+        description: "Lütfen firma ve ilgili kişi bilgilerini doldurun.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const teklifNo = await form.getOrGenerateTeklifNo();
+    if (!teklifNo) {
+      toast({
+        title: "Sayaç Hatası",
+        description: "Teklif numarası alınamadı!",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    form.setCurrentTeklifNo(teklifNo);
+    form.setLastFinalizedTeklifNo(teklifNo);
+    form.markFormFinalized();
+
+    await pdf.generatePDF(
+      teklifNo,
+      getFormData(),
+      form.calculateRowTotal,
+      form.calculateSubtotal,
+      form.calculateKDV,
+      form.calculateTotal,
+      form.formatCurrency
+    );
+  };
+
+  // Email Preview Handler
+  const handleEmailPreview = async () => {
+    if (!form.firma || !form.ilgiliKisi || !form.email) {
+      toast({
+        title: "Eksik Bilgi",
+        description: "Firma, ilgili kişi ve e-posta zorunludur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const teklifNo = await form.getOrGenerateTeklifNo();
+      if (!teklifNo) {
+        throw new Error("Teklif numarası alınamadı");
+      }
+
+      form.setCurrentTeklifNo(teklifNo);
+
+      await pdf.createPDFPreview(
+        teklifNo,
+        getFormData(),
+        form.calculateRowTotal,
+        form.calculateSubtotal,
+        form.calculateKDV,
+        form.calculateTotal,
+        form.formatCurrency
+      );
+
+      setShowEmailModal(true);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Hata",
+        description: "Önizleme oluşturulamadı!",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Send Email Handler
+  const handleSendEmail = async () => {
+    if (!pdf.pdfBlob || !form.currentTeklifNo) {
+      toast({
+        title: "Hata",
+        description: "PDF hazır değil!",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await pdf.sendEmail(
+        form.currentTeklifNo,
+        getFormData(),
+        pdf.pdfBlob,
+        form.calculateRowTotal,
+        form.calculateSubtotal,
+        form.calculateKDV,
+        form.calculateTotal,
+        form.formatCurrency
+      );
+
+      // Mark as finalized after successful send
+      form.setLastFinalizedTeklifNo(form.currentTeklifNo);
+      form.markFormFinalized();
+
+      setShowEmailModal(false);
+    } catch (error) {
+      // Error already handled in hook
+    }
+  };
+
+  // WhatsApp Preview Handler
+  const handleWhatsAppPreview = async () => {
+    if (!form.firma || !form.ilgiliKisi) {
+      toast({
+        title: "Eksik Bilgi",
+        description: "Firma ve ilgili kişi zorunludur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const teklifNo = await form.getOrGenerateTeklifNo();
+      if (!teklifNo) {
+        throw new Error("Teklif numarası alınamadı");
+      }
+
+      form.setCurrentTeklifNo(teklifNo);
+
+      await pdf.createPDFPreview(
+        teklifNo,
+        getFormData(),
+        form.calculateRowTotal,
+        form.calculateSubtotal,
+        form.calculateKDV,
+        form.calculateTotal,
+        form.formatCurrency
+      );
+
+      setShowWhatsAppModal(true);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Hata",
+        description: "WhatsApp önizlemesi oluşturulamadı!",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // WhatsApp Share Handler
+  const handleWhatsAppShare = async () => {
+    if (!pdf.pdfBlob || !form.currentTeklifNo) {
+      toast({
+        title: "Hata",
+        description: "PDF hazır değil!",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await pdf.shareWhatsApp(
+        form.currentTeklifNo,
+        getFormData(),
+        pdf.pdfBlob,
+        form.calculateTotal,
+        form.formatCurrency
+      );
+
+      // Mark as finalized after successful share
+      form.setLastFinalizedTeklifNo(form.currentTeklifNo);
+      form.markFormFinalized();
+
+      setShowWhatsAppModal(false);
+    } catch (error) {
+      // Error already handled in hook
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header */}
+      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <Link 
+              to="/apps" 
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-white tracking-tight">
+                  TEKLİF OLUŞTURUCU
+                </h1>
+                <p className="text-xs text-slate-400">Dayan Dişli Sanayi</p>
+              </div>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              <Link to="/apps">
+                <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-slate-700/50">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Geri
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Teklif No Display */}
+        {form.currentTeklifNo && (
+          <div className="mb-6 flex items-center gap-3 bg-blue-600/20 border border-blue-500/30 rounded-lg px-4 py-3">
+            <FileText className="w-5 h-5 text-blue-400" />
+            <span className="text-lg font-semibold text-white">Teklif No: {form.currentTeklifNo}</span>
+            {!form.formChanged && (
+              <span className="text-xs text-green-400 ml-2">(Kaydedildi)</span>
+            )}
+          </div>
+        )}
+
+        {/* Customer Information */}
+        <CustomerInfoSection
+          firma={form.firma}
+          ilgiliKisi={form.ilgiliKisi}
+          tel={form.tel}
+          email={form.email}
+          konu={form.konu}
+          onFirmaChange={form.setFirma}
+          onIlgiliKisiChange={form.setIlgiliKisi}
+          onTelChange={form.setTel}
+          onEmailChange={form.setEmail}
+          onKonuChange={form.setKonu}
+          onCustomerSelectClick={() => {
+            loadCustomers();
+            setShowCustomerModal(true);
+          }}
+        />
+
+        {/* Product Table */}
+        <ProductTableSection
+          products={form.products}
+          activeCurrency={form.activeCurrency}
+          onAddRow={form.addRow}
+          onRemoveRow={form.removeRow}
+          onUpdateProduct={form.updateProduct}
+          onCurrencyChange={form.handleCurrencyChange}
+          calculateRowTotal={form.calculateRowTotal}
+          calculateSubtotal={form.calculateSubtotal}
+          calculateKDV={form.calculateKDV}
+          calculateTotal={form.calculateTotal}
+          formatCurrency={form.formatCurrency}
+        />
+
+        {/* Footer Fields */}
+        <FooterFieldsSection
+          notlar={form.notlar}
+          opsiyon={form.opsiyon}
+          teslimSuresi={form.teslimSuresi}
+          odemeSekli={form.odemeSekli}
+          teslimYeri={form.teslimYeri}
+          onNotlarChange={form.setNotlar}
+          onOpsiyonChange={form.setOpsiyon}
+          onTeslimSuresiChange={form.setTeslimSuresi}
+          onOdemeSekliChange={form.setOdemeSekli}
+          onTeslimYeriChange={form.setTeslimYeri}
+        />
+
+        {/* Action Buttons */}
+        <ActionButtons
+          isGenerating={pdf.isGenerating}
+          isSendingEmail={pdf.isSendingEmail}
+          isSendingWhatsApp={pdf.isSendingWhatsApp}
+          onGeneratePDF={handleGeneratePDF}
+          onEmailPreview={handleEmailPreview}
+          onWhatsAppPreview={handleWhatsAppPreview}
+          hasRequiredFields={form.hasRequiredFields()}
+        />
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-700/50 bg-slate-900/50 mt-12">
+        <div className="container mx-auto px-4 py-6 text-center">
+          <p className="text-sm text-slate-500">
+            © {new Date().getFullYear()} DAYAN DİŞLİ SANAYİ | İkitelli O.S.B. Çevre Sanayi Sitesi, 8. Blok No: 45/47 Başakşehir / İstanbul
+          </p>
+          <p className="text-sm text-slate-500 mt-1">
+            Tel: +90 536 583 74 20 | E-mail: info@dayandisli.com | Web: dayandisli.com
+          </p>
+        </div>
+      </footer>
+
+      {/* Email Preview Modal */}
+      <EmailPreviewModal
+        open={showEmailModal}
+        onOpenChange={setShowEmailModal}
+        currentTeklifNo={form.currentTeklifNo}
+        email={form.email}
+        firma={form.firma}
+        ilgiliKisi={form.ilgiliKisi}
+        pdfPreviewUrl={pdf.pdfPreviewUrl}
+        total={form.calculateTotal()}
+        activeCurrency={form.activeCurrency}
+        isSending={pdf.isSendingEmail}
+        onSend={handleSendEmail}
+        formatCurrency={form.formatCurrency}
+        formatName={form.formatName}
+      />
+
+      {/* WhatsApp Preview Modal */}
+      <WhatsAppPreviewModal
+        open={showWhatsAppModal}
+        onOpenChange={setShowWhatsAppModal}
+        currentTeklifNo={form.currentTeklifNo}
+        firma={form.firma}
+        ilgiliKisi={form.ilgiliKisi}
+        total={form.calculateTotal()}
+        activeCurrency={form.activeCurrency}
+        isSending={pdf.isSendingWhatsApp}
+        onShare={handleWhatsAppShare}
+        formatCurrency={form.formatCurrency}
+        formatName={form.formatName}
+      />
+
+      {/* Customer Selection Modal */}
+      <CustomerSelectionModal
+        open={showCustomerModal}
+        onOpenChange={setShowCustomerModal}
+        customers={customers}
+        loading={loadingCustomers}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onSelectCustomer={selectCustomer}
+        onLoadCustomers={loadCustomers}
+      />
+    </div>
+  );
+};
+
+export default TeklifPage;
+
