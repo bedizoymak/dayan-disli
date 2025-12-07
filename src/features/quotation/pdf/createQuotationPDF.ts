@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { fontBase64 } from "@/lib/pdfAssets/font-roboto";
+import { fontRobotoRegular, fontRobotoBold } from "@/lib/pdfAssets/font-roboto";
 import { logoBase64 } from "@/lib/pdfAssets/logo-dayan";
 import { QuotationFormData, ProductRow } from "../types";
 
@@ -23,9 +23,12 @@ export const createQuotationPDF = (
   const today = new Date().toLocaleDateString("tr-TR");
 
   // Font yükle
-  doc.addFileToVFS("Roboto-Regular.ttf", fontBase64);
+  doc.addFileToVFS("Roboto-Regular.ttf", fontRobotoRegular);
   doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-  doc.addFont("Roboto-Regular.ttf", "Roboto", "bold");
+
+  doc.addFileToVFS("Roboto-Bold.ttf", fontRobotoBold);
+  doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+
   doc.setFont("Roboto", "normal");
 
   const drawHeader = () => {
