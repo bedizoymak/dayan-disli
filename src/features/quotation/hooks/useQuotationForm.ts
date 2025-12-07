@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { ProductRow, EXCHANGE_RATES } from "../types";
+import { ProductRow } from "../types";
 
 export function formatName(name: string) {
   return name
@@ -16,36 +16,35 @@ export function formatName(name: string) {
 
 export function useQuotationForm() {
   const { toast } = useToast();
-  
+
   // Customer info state
   const [firma, setFirma] = useState("");
   const [ilgiliKisi, setIlgiliKisi] = useState("");
   const [tel, setTel] = useState("");
   const [email, setEmail] = useState("");
   const [konu, setKonu] = useState("");
-  
+
   // Active currency for all products
   const [activeCurrency, setActiveCurrency] = useState("TRY");
-  
+
   // Product rows state
   const [products, setProducts] = useState<ProductRow[]>([
     { id: 1, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: "TRY" }
   ]);
-  
+
   // Footer fields state
   const [notlar, setNotlar] = useState("");
   const [opsiyon, setOpsiyon] = useState("");
   const [teslimSuresi, setTeslimSuresi] = useState("");
   const [odemeSekli, setOdemeSekli] = useState("");
   const [teslimYeri, setTeslimYeri] = useState("");
-  
+
   // Counter & tracking state
   const [currentTeklifNo, setCurrentTeklifNo] = useState("");
-  const [formChanged, setFormChanged] = useState(true); // Start as true so first action generates new number
+  const [formChanged, setFormChanged] = useState(true);
   const [lastFinalizedTeklifNo, setLastFinalizedTeklifNo] = useState("");
   const formSnapshotRef = useRef<string>("");
 
-  // Get form snapshot for change detection
   const getFormSnapshot = () => {
     return JSON.stringify({
       firma, ilgiliKisi, tel, email, konu,
@@ -53,19 +52,16 @@ export function useQuotationForm() {
     });
   };
 
-  // Check if form has changed since last finalized quotation
   const checkFormChanged = () => {
     const currentSnapshot = getFormSnapshot();
     return currentSnapshot !== formSnapshotRef.current;
   };
 
-  // Mark form as finalized (save snapshot)
   const markFormFinalized = () => {
     formSnapshotRef.current = getFormSnapshot();
     setFormChanged(false);
   };
 
-  // Track form changes
   useEffect(() => {
     if (lastFinalizedTeklifNo && checkFormChanged()) {
       setFormChanged(true);
@@ -77,12 +73,37 @@ export function useQuotationForm() {
     setActiveCurrency(newCurrency);
     setFormChanged(true);
   };
-  
 
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
     setProducts([...products, { id: newId, kod: "", cins: "", malzeme: "C45", miktar: 1, birim: "Adet", birimFiyat: 0, doviz: activeCurrency }]);
     setFormChanged(true);
+  };
+
+  const loadQuotationByNo = async (teklifNo: string) => {
+    const { data, error } = await supabase
+      .from("quotations")
+      .select("*")
+      .eq("teklif_no", teklifNo)
+      .single();
+
+    if (error || !data) throw new Error("Teklif bulunamadı");
+
+    setFirma(data.firma);
+    setIlgiliKisi(data.ilgili_kisi);
+    setTel(data.tel);
+    setEmail(data.email);
+    setKonu(data.konu);
+    setProducts(JSON.parse(data.products));
+    setActiveCurrency(data.active_currency);
+    setNotlar(data.notlar);
+    setOpsiyon(data.opsiyon);
+    setTeslimSuresi(data.teslim_suresi);
+    setOdemeSekli(data.odeme_sekli);
+    setTeslimYeri(data.teslim_yeri);
+
+    setCurrentTeklifNo(data.teklif_no);
+    markFormFinalized(); // SAYFA YÜKLENDİĞİNDE KAYDEDİLDİ GÖZÜKSÜN
   };
 
   const removeRow = (id: number) => {
@@ -107,14 +128,11 @@ export function useQuotationForm() {
     return `${symbols[currency] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Get or generate teklif number
   const getOrGenerateTeklifNo = async (): Promise<string | null> => {
-    // If form hasn't changed and we have a finalized number, reuse it
     if (!formChanged && lastFinalizedTeklifNo) {
       return lastFinalizedTeklifNo;
     }
 
-    // Generate new number
     try {
       const { data, error } = await supabase.rpc("increment_monthly_counter");
       if (error || !data) {
@@ -126,7 +144,6 @@ export function useQuotationForm() {
       const now = new Date();
       const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
       const teklifNo = `TR-DAYAN-${yearMonth}${formattedCounter}`;
-      
       return teklifNo;
     } catch (error) {
       console.error("Counter generation error:", error);
@@ -134,115 +151,51 @@ export function useQuotationForm() {
     }
   };
 
-  // Validation helper
   const hasRequiredFields = () => {
     return !!(firma && ilgiliKisi);
   };
 
-  // Wrapper setters that mark form as changed
-  const setFirmaWithChange = (value: string) => {
-    setFirma(value);
-    setFormChanged(true);
-  };
-
-  const setIlgiliKisiWithChange = (value: string) => {
-    setIlgiliKisi(value);
-    setFormChanged(true);
-  };
-
-  const setTelWithChange = (value: string) => {
-    setTel(value);
-    setFormChanged(true);
-  };
-
-  const setEmailWithChange = (value: string) => {
-    setEmail(value);
-    setFormChanged(true);
-  };
-
-  const setKonuWithChange = (value: string) => {
-    setKonu(value);
-    setFormChanged(true);
-  };
-
-  const setNotlarWithChange = (value: string) => {
-    setNotlar(value);
-    setFormChanged(true);
-  };
-
-  const setOpsiyonWithChange = (value: string) => {
-    setOpsiyon(value);
-    setFormChanged(true);
-  };
-
-  const setTeslimSuresiWithChange = (value: string) => {
-    setTeslimSuresi(value);
-    setFormChanged(true);
-  };
-
-  const setOdemeSekliWithChange = (value: string) => {
-    setOdemeSekli(value);
-    setFormChanged(true);
-  };
-
-  const setTeslimYeriWithChange = (value: string) => {
-    setTeslimYeri(value);
-    setFormChanged(true);
-  };
+  // SETTERS WITH CHANGE FLAG
+  const setFirmaWithChange = (v: string) => { setFirma(v); setFormChanged(true); };
+  const setIlgiliKisiWithChange = (v: string) => { setIlgiliKisi(v); setFormChanged(true); };
+  const setTelWithChange = (v: string) => { setTel(v); setFormChanged(true); };
+  const setEmailWithChange = (v: string) => { setEmail(v); setFormChanged(true); };
+  const setKonuWithChange = (v: string) => { setKonu(v); setFormChanged(true); };
+  const setNotlarWithChange = (v: string) => { setNotlar(v); setFormChanged(true); };
+  const setOpsiyonWithChange = (v: string) => { setOpsiyon(v); setFormChanged(true); };
+  const setTeslimSuresiWithChange = (v: string) => { setTeslimSuresi(v); setFormChanged(true); };
+  const setOdemeSekliWithChange = (v: string) => { setOdemeSekli(v); setFormChanged(true); };
+  const setTeslimYeriWithChange = (v: string) => { setTeslimYeri(v); setFormChanged(true); };
 
   return {
-    // Customer state
-    firma,
-    ilgiliKisi,
-    tel,
-    email,
-    konu,
+    firma, ilgiliKisi, tel, email, konu,
     setFirma: setFirmaWithChange,
     setIlgiliKisi: setIlgiliKisiWithChange,
     setTel: setTelWithChange,
     setEmail: setEmailWithChange,
     setKonu: setKonuWithChange,
-    
-    // Product state
-    products,
-    activeCurrency,
-    addRow,
-    removeRow,
-    updateProduct,
+
+    products, activeCurrency,
+    addRow, removeRow, updateProduct,
     handleCurrencyChange,
-    
-    // Footer state
-    notlar,
-    opsiyon,
-    teslimSuresi,
-    odemeSekli,
-    teslimYeri,
+
+    notlar, opsiyon, teslimSuresi, odemeSekli, teslimYeri,
     setNotlar: setNotlarWithChange,
     setOpsiyon: setOpsiyonWithChange,
     setTeslimSuresi: setTeslimSuresiWithChange,
     setOdemeSekli: setOdemeSekliWithChange,
     setTeslimYeri: setTeslimYeriWithChange,
-    
-    // Calculations
-    calculateRowTotal,
-    calculateSubtotal,
-    calculateKDV,
-    calculateTotal,
-    
-    // Utilities
-    formatCurrency,
-    formatName,
-    
-    // Teklif number
-    currentTeklifNo,
-    setCurrentTeklifNo,
-    formChanged,
-    getOrGenerateTeklifNo,
-    markFormFinalized,
-    setLastFinalizedTeklifNo,
-    
-    // Validation
+
+    calculateRowTotal, calculateSubtotal, calculateKDV, calculateTotal,
+    formatCurrency, formatName,
+
+    currentTeklifNo, setCurrentTeklifNo,
+    formChanged, getOrGenerateTeklifNo,
+    markFormFinalized, setLastFinalizedTeklifNo,
+
     hasRequiredFields,
+
+    // 👇 BİZİM DESTEĞİMİZ
+    loadQuotationByNo
   };
 }
-

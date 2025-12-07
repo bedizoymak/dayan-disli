@@ -15,6 +15,8 @@ import { WhatsAppPreviewModal } from "./components/WhatsAppPreviewModal";
 import { CustomerSelectionModal } from "./components/CustomerSelectionModal";
 import { CustomerProfile } from "./types";
 import { RecentQuotationsPanel } from "./components/RecentQuotationsPanel";
+import { PreviousQuotationsDrawer } from "./components/PreviousQuotationsDrawer";
+
 
 
 const TeklifPage = () => {
@@ -359,6 +361,28 @@ const TeklifPage = () => {
             setShowCustomerModal(true);
           }}
         />
+
+<PreviousQuotationsDrawer
+  onSelect={async (teklifNo) => {
+    try {
+      await form.loadQuotationByNo(teklifNo);
+      await pdf.generatePDF(
+        teklifNo,
+        getFormData(),
+        form.calculateRowTotal,
+        form.calculateSubtotal,
+        form.calculateKDV,
+        form.calculateTotal,
+        form.formatCurrency
+      );
+      toast({ title: "PDF Oluşturuldu", description: "Teklif başarıyla yüklendi." });
+    } catch {
+      toast({ title: "Hata", description: "Teklif yüklenemedi.", variant: "destructive" });
+    }
+  }}
+/>
+
+
         <RecentQuotationsPanel />
 
 
