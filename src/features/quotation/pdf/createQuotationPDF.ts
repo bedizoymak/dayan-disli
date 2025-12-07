@@ -46,7 +46,7 @@ doc.setFont("Roboto", "bold");
 doc.setFontSize(14);
 doc.setTextColor(55, 65, 81);
 
-const titleText = "SİPARİŞ TEKLİF FORMU";
+const titleText = "SİPARİŞ FİYAT TEKLİFİ";
 const titleWidth = doc.getTextWidth(titleText);
 const titleX = (pageWidth - titleWidth) / 2;
 const titleY = 17;
@@ -58,9 +58,9 @@ const fontSize = 7;
 const rightMargin = 5;
 const paddingX = 3;
 const paddingY = 2;
-const lineGap = 5;
+const lineGap = 4;
 
-// Döküman No hesaplama → "D 001-1"
+// Dosya No hesaplama → "D 001-1"
 const teklifSuffix = teklifNo.slice(-3).trim();
 const documentNo = `D ${teklifSuffix}-1`;
 
@@ -68,74 +68,68 @@ const documentNo = `D ${teklifSuffix}-1`;
 const labelDate = "Tarih: ";
 const valueDate = today;
 
-const labelDoc  = "Döküman No: ";
+const labelDoc  = "Dosya No: ";
 const valueDoc  = documentNo;
 
 const labelOffer = "Teklif No: ";
 const valueOffer = teklifNo;
 
-// Bir satırın gerçek genişliğini (bold + normal) ölçen yardımcı fonksiyon
-const measureLineWidth = (label: string, value: string) => {
-  doc.setFont("Roboto", "bold");
-  doc.setFontSize(fontSize);
-  const labelW = doc.getTextWidth(label);
+// En geniş etiket hizası için ölçüm
+doc.setFont("Roboto", "bold");
+doc.setFontSize(fontSize);
+const labelMaxWidth = Math.max(
+  doc.getTextWidth(labelDate),
+  doc.getTextWidth(labelDoc),
+  doc.getTextWidth(labelOffer)
+);
 
-  doc.setFont("Roboto", "normal");
-  const valueW = doc.getTextWidth(value);
+// Kutu genişliği (etiket + en geniş değer)
+doc.setFont("Roboto", "normal");
+const valueWidths = [
+  doc.getTextWidth(valueDate),
+  doc.getTextWidth(valueDoc),
+  doc.getTextWidth(valueOffer),
+];
 
-  return labelW + valueW;
-};
+const boxTextWidth = labelMaxWidth + Math.max(...valueWidths);
 
-const w1 = measureLineWidth(labelDate, valueDate);
-const w2 = measureLineWidth(labelDoc, valueDoc);
-const w3 = measureLineWidth(labelOffer, valueOffer);
-
-const boxTextWidth = Math.max(w1, w2, w3);
-
-// Kutu ölçüleri (3 satır + rahat boşluk)
+// Kutu ölçüleri
 const boxWidth = boxTextWidth + paddingX * 2;
-const boxHeight = 20;
+const boxHeight = 17;
 
-// Dikey ortalama: logo (6–26) ile çizgi (28) arası
+// Dikey ortalama: başlık çizgisi referanslı
 const boxY = (6 + 22) / 2 - boxHeight / 2;
 const boxX = pageWidth - rightMargin - boxWidth;
 
-// Arka plan kutusu
+// Kutu çizimi
 doc.setFillColor(245, 245, 245);
 doc.setDrawColor(200, 200, 200);
 doc.setLineWidth(0.3);
 doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 1.5, 1.5, "FD");
 
-// Metin yerleşimi (sola hizalı, etiket bold, değer normal)
+// Metin yerleşimi (sol hizalı)
 let y = boxY + 6;
 const x = boxX + paddingX;
 
 // Satır 1: Tarih
 doc.setFont("Roboto", "bold");
-doc.setFontSize(fontSize);
 doc.text(labelDate, x, y);
-let offset = doc.getTextWidth(labelDate);
-
 doc.setFont("Roboto", "normal");
-doc.text(valueDate, x + offset, y);
+doc.text(valueDate, x + labelMaxWidth, y);
 
-// Satır 2: Döküman No
+// Satır 2: Dosya No
 y += lineGap;
 doc.setFont("Roboto", "bold");
 doc.text(labelDoc, x, y);
-offset = doc.getTextWidth(labelDoc);
-
 doc.setFont("Roboto", "normal");
-doc.text(valueDoc, x + offset, y);
+doc.text(valueDoc, x + labelMaxWidth, y);
 
 // Satır 3: Teklif No
 y += lineGap;
 doc.setFont("Roboto", "bold");
 doc.text(labelOffer, x, y);
-offset = doc.getTextWidth(labelOffer);
-
 doc.setFont("Roboto", "normal");
-doc.text(valueOffer, x + offset, y);
+doc.text(valueOffer, x + labelMaxWidth, y);
 
 };
 
