@@ -411,39 +411,46 @@ export const createQuotationPDF = (
 
   const termsTitle = "TEKLİF ŞARTLARI";
 
-  // Kartın ortasına hizalamak için X
-  const titleY = cardY + padY2 + 5;          // kart üstünden biraz boşluk
-  const titleCenterX = marginX + termsCardWidth / 2;
-
-  doc.text(termsTitle, titleCenterX, titleY, { align: "center" });
-
-  // İçerik (başlıktan sonra güvenli boşluk)
-  let ty = titleY + 6;                       // 6mm aşağıdan başlasın
-
+  // Başlık font ayarları
+  doc.setFont("Roboto", "bold")
+    .setFontSize(11)
+    .setTextColor(31, 41, 55);
+  
+  // ✔ Gerçek ortalama
+  const titleWidth = doc.getTextWidth(termsTitle);
+  const titleCenterX = marginX + (termsCardWidth - titleWidth) / 2;
+  const titleY = cardY + padY2 + 6;
+  
+  // Başlık Yaz
+  doc.text(termsTitle, titleCenterX, titleY);
+  
+  // İçerik başlangıcı
+  let ty = titleY + 7;
+  
   termsLabeled.forEach(([label, value]) => {
     doc.setFont("Roboto", "bold")
-   .setFontSize(9) // 📌 etiket boyutu sabitlendi
-   .setTextColor(80, 90, 100); // koyu gri, daha okunaklı
-
-doc.text(label, marginX + padX2, ty);
-
-doc.setFont("Roboto", "normal")
-.setFontSize(8) // 📌 içerik fontu sabit
-.setTextColor(55, 65, 81);
-
-
-const wrapped = doc.splitTextToSize(
-  value,
-  termsCardWidth - padX2 * 2 - 32
-);
-
-
-    wrapped.forEach((line, i) =>
-      doc.text(line, marginX + padX2 + 40, ty + i * lineH)
+       .setFontSize(9)
+       .setTextColor(90, 100, 110);
+  
+    doc.text(label, marginX + padX2, ty);
+  
+    doc.setFont("Roboto", "normal")
+       .setFontSize(8)
+       .setTextColor(55, 65, 81);
+  
+    const wrapped = doc.splitTextToSize(
+      value,
+      termsCardWidth - padX2 * 2 - 32
     );
-
+  
+    wrapped.forEach((line, i) =>
+      // ✔ Daha doğru hizalama
+      doc.text(line, marginX + padX2 + 32, ty + i * lineH)
+    );
+  
     ty += wrapped.length * lineH;
   });
+  
 
 
   // ===================================================================
