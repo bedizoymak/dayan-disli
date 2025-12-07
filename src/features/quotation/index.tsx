@@ -113,6 +113,36 @@ const TeklifPage = () => {
     form.setLastFinalizedTeklifNo(teklifNo);
     form.markFormFinalized();
 
+    const { error } = await supabase.from("quotations").insert({
+      teklif_no: teklifNo,
+      firma: form.firma,
+      ilgili_kisi: form.ilgiliKisi,
+      tel: form.tel,
+      email: form.email,
+      konu: form.konu,
+      products: JSON.stringify(form.products),
+      active_currency: form.activeCurrency,
+      notlar: form.notlar,
+      opsiyon: form.opsiyon,
+      teslim_suresi: form.teslimSuresi,
+      odeme_sekli: form.odemeSekli,
+      teslim_yeri: form.teslimYeri,
+      subtotal: form.calculateSubtotal(),
+      kdv: form.calculateKDV(),
+      total: form.calculateTotal()
+    });
+  
+    if (error) {
+      console.error(error);
+      toast({
+        title: "Kaydetme Hatası",
+        description: "Supabase’e kayıt yapılamadı!",
+        variant: "destructive",
+      });
+      return;
+    }
+  
+
     await pdf.generatePDF(
       teklifNo,
       getFormData(),
