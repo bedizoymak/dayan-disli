@@ -7,7 +7,6 @@ import { loadRobotoFont } from "@/lib/pdfFonts";
 import { QuotationFormData, ProductRow } from "../types";
 import { formatName } from "./useQuotationForm";
 
-const formatDate = (date: Date) => date.toLocaleDateString('tr-TR');
 
 export function useQuotationPDF() {
   const { toast } = useToast();
@@ -64,305 +63,150 @@ export function useQuotationPDF() {
     calculateTotal: () => number,
     formatCurrencyFn: (amount: number, currency?: string) => string
   ): jsPDF => {
-    const doc = new jsPDF('p', 'mm', 'a4');
+    const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 12;
-    const today = formatDate(new Date());
-    
-    const { firma, ilgiliKisi, tel, email, konu, products, activeCurrency, notlar, opsiyon, teslimSuresi, odemeSekli, teslimYeri } = formData;
-    
-    // Embed Roboto font for Turkish character support
+    const marginX = 12;
+    const primaryColor = [0, 51, 102]; // DAYAN Mavi
+    const tableHead = [235, 245, 255]; // Açık Mavi
+    const today = new Date().toLocaleDateString("tr-TR");
+
+    // === Embed Font ===
     if (fontBase64) {
       doc.addFileToVFS("Roboto-Regular.ttf", fontBase64);
       doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
       doc.addFont("Roboto-Regular.ttf", "Roboto", "bold");
       doc.setFont("Roboto");
     }
+    doc.setFontSize(10);
 
-    const fontName = fontBase64 ? "Roboto" : "helvetica";
-    
-    // ===== HEADER SECTION =====
-    // Clean white header with border
-    doc.setFillColor(255, 255, 255);
-    doc.rect(0, 0, pageWidth, 38, 'F');
-    
-    // Bottom border line
-    doc.setDrawColor(59, 130, 246); // blue-500
-    doc.setLineWidth(1);
-    doc.line(0, 38, pageWidth, 38);
-    
-    // Add Logo (top-left)
-    if (logoBase64) {
-      try {
-        doc.addImage(logoBase64, "PNG", margin, 8, 42, 18);
-      } catch (e) {
-        console.error('Failed to add logo to PDF:', e);
-        doc.setFontSize(14);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont(fontName, "bold");
-        doc.text("DAYAN DISLI SANAYI", margin, 18);
+    const drawHeader = () => {
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, pageWidth, 30, "F");
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, "PNG", marginX, 6, 40, 18);
+        } catch (e) {
+          console.error('Failed to add logo to PDF:', e);
+        }
       }
-    } else {
-      doc.setFontSize(14);
-      doc.setTextColor(15, 23, 42);
-      doc.setFont(fontName, "bold");
-      doc.text("DAYAN DISLI SANAYI", margin, 18);
-    }
-    
-    // TEKLİF title and info (Right side)
-    doc.setFontSize(20);
-    doc.setTextColor(15, 23, 42); // slate-900
-    doc.setFont(fontName, "bold");
-    doc.text("TEKLIF", pageWidth - margin, 16, { align: "right" });
-    
-    doc.setFontSize(9);
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(100, 116, 139); // slate-500
-    doc.text(`No: ${teklifNo}`, pageWidth - margin, 24, { align: "right" });
-    doc.text(`Tarih: ${today}`, pageWidth - margin, 30, { align: "right" });
-    
-    // Page info
-    doc.text("SAYFA 1 / 1", pageWidth - margin, 36, { align: "right" });
+      doc.setFontSize(20);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("Roboto", "bold");
+      doc.text("TEKLİF", pageWidth - marginX, 18, { align: "right" });
+    };
 
-    // ===== TWO-COLUMN INFO SECTION =====
-    let yPos = 46;
-    const leftColWidth = (pageWidth - 2 * margin - 8) / 2;
-    const rightColX = margin + leftColWidth + 8;
-    
-    // Left Column - SATICI (Seller)
-    doc.setFillColor(248, 250, 252); // slate-50
-    doc.roundedRect(margin, yPos, leftColWidth, 42, 2, 2, 'F');
-    doc.setDrawColor(226, 232, 240); // slate-200
-    doc.setLineWidth(0.3);
-    doc.roundedRect(margin, yPos, leftColWidth, 42, 2, 2, 'S');
-    
-    doc.setFontSize(9);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(59, 130, 246); // blue-500
-    doc.text("SATICI", margin + 4, yPos + 6);
-    
-    doc.setFontSize(8);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text("DAYAN DISLI SANAYI", margin + 4, yPos + 13);
-    
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(71, 85, 105); // slate-600
-    doc.text("Ikitelli O.S.B. Cevre Sanayi Sitesi", margin + 4, yPos + 19);
-    doc.text("8. Blok No: 45/47", margin + 4, yPos + 24);
-    doc.text("Basaksehir / Istanbul 34490", margin + 4, yPos + 29);
-    doc.text("Tel: +90 536 583 74 20", margin + 4, yPos + 35);
-    doc.text("info@dayandisli.com", margin + 4, yPos + 40);
-    
-    // Right Column - ALICI (Customer)
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(rightColX, yPos, leftColWidth, 42, 2, 2, 'F');
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(rightColX, yPos, leftColWidth, 42, 2, 2, 'S');
-    
-    doc.setFontSize(9);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(59, 130, 246);
-    doc.text("ALICI", rightColX + 4, yPos + 6);
-    
-    doc.setFontSize(8);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text(firma || "-", rightColX + 4, yPos + 13);
-    
-    doc.setFont(fontName, "normal");
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Ilgili: ${ilgiliKisi || "-"}`, rightColX + 4, yPos + 19);
-    doc.text(`Tel: ${tel || "-"}`, rightColX + 4, yPos + 25);
-    doc.text(`E-posta: ${email || "-"}`, rightColX + 4, yPos + 31);
-    if (konu) {
-      doc.text(`Konu: ${konu}`, rightColX + 4, yPos + 37);
-    }
+    const drawFooter = () => {
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, pageHeight - 18, pageWidth, 18, "F");
+      doc.setFontSize(7);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("Roboto", "normal");
+      doc.text(
+        "İkitelli O.S.B. Çevre Sanayi Sitesi 8. Blok No:45/47 Başakşehir / İstanbul | Tel: +90 536 583 74 20 | Email: info@dayandisli.com | Web: www.dayandisli.com",
+        pageWidth / 2,
+        pageHeight - 8,
+        { align: "center" }
+      );
+      const pageNo = (doc as any).internal.pages.length;
+      doc.text(`Sayfa ${pageNo}`, pageWidth - marginX, pageHeight - 4, { align: "right" });
+    };
 
-    // ===== INTRO TEXT =====
-    yPos += 48;
-    doc.setFontSize(9);
-    doc.setTextColor(51, 65, 85); // slate-700
-    doc.setFont(fontName, "normal");
-    doc.text(`Sayin ${ilgiliKisi || "Yetkili"},`, margin, yPos);
-    doc.text("Asagida talebiniz dogrultusunda hazirlanan fiyat teklifimizi bilgilerinize sunariz.", margin, yPos + 5);
+    // İlk sayfada çiz
+    drawHeader();
+    drawFooter();
 
-    // ===== PRODUCT TABLE =====
-    yPos += 12;
-    
-    const tableBody = products.map((p, idx) => [
-      (idx + 1).toString(),
+    // SATIŞCI & ALICI Kartları
+    let y = 40;
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(11);
+    doc.setFont("Roboto", "bold");
+    doc.text("SATICI BİLGİLERİ", marginX, y);
+    doc.setFontSize(9);
+    doc.setFont("Roboto", "normal");
+    y += 5;
+    doc.text("DAYAN DİŞLİ & PROFİL TAŞLAMA", marginX, y);
+    y += 5;
+    doc.text("İkitelli O.S.B. Çevre Sanayi Sitesi 8. Blok No:45/47 Başakşehir / İstanbul", marginX, y);
+    y += 5;
+    doc.text("Tel: +90 536 583 74 20", marginX, y);
+    y += 5;
+    doc.text("Email: info@dayandisli.com", marginX, y);
+
+    const rightX = pageWidth / 2;
+    y = 40;
+    doc.setFontSize(11);
+    doc.setFont("Roboto", "bold");
+    doc.text("ALICI BİLGİLERİ", rightX, y);
+    doc.setFontSize(9);
+    doc.setFont("Roboto", "normal");
+    y += 5;
+    doc.text(formData.firma || "-", rightX, y);
+    y += 5;
+    doc.text(formData.ilgiliKisi || "-", rightX, y);
+    y += 5;
+    doc.text(formData.tel || "-", rightX, y);
+    y += 5;
+    doc.text(formData.email || "-", rightX, y);
+    y += 5;
+    doc.text(formData.teslimYeri || "-", rightX, y);
+
+    y += 12;
+    doc.setFontSize(10);
+    doc.text(`Teklif No: ${teklifNo}`, marginX, y);
+    y += 6;
+    doc.text(`Tarih: ${today}`, marginX, y);
+
+    // Ürün Tablosu
+    const tableData = formData.products.map((p: ProductRow, i: number) => [
+      (i + 1).toString(),
       p.kod || "-",
       p.cins || "-",
       p.malzeme,
       p.miktar.toString(),
       p.birim,
-      formatCurrencyFn(p.birimFiyat, activeCurrency),
+      formatCurrencyFn(p.birimFiyat, formData.activeCurrency),
       "%20",
-      formatCurrencyFn(calculateRowTotal(p), activeCurrency)
+      formatCurrencyFn(calculateRowTotal(p), formData.activeCurrency)
     ]);
 
     autoTable(doc, {
-      startY: yPos,
-      margin: { left: margin, right: margin },
-      theme: 'grid',
-      styles: { 
-        fontSize: 8, 
-        cellPadding: 3.5, 
-        font: fontName,
-        lineColor: [203, 213, 225], // slate-300
-        lineWidth: 0.2,
-        textColor: [51, 65, 85] // slate-700
+      startY: y + 10,
+      theme: "grid",
+      headStyles: {
+        fillColor: [tableHead[0], tableHead[1], tableHead[2]] as [number, number, number],
+        textColor: [0, 0, 0],
+        fontStyle: "bold",
+        font: "Roboto"
       },
-      headStyles: { 
-        fillColor: [15, 23, 42], // slate-900
-        textColor: [255, 255, 255], 
-        fontStyle: 'bold', 
-        font: fontName,
-        halign: 'center',
-        cellPadding: 4
+      styles: {
+        font: "Roboto",
+        fontSize: 8
       },
-      bodyStyles: { font: fontName },
-      alternateRowStyles: { fillColor: [248, 250, 252] }, // slate-50
-      head: [['#', 'Kod', 'Hizmet / Urun', 'Malzeme', 'Miktar', 'Birim', 'Birim Fiyat', 'KDV', 'Toplam']],
-      body: tableBody,
-      columnStyles: {
-        0: { cellWidth: 8, halign: 'center' },
-        1: { cellWidth: 18 },
-        2: { cellWidth: 42 },
-        3: { cellWidth: 18, halign: 'center' },
-        4: { cellWidth: 14, halign: 'center' },
-        5: { cellWidth: 14, halign: 'center' },
-        6: { cellWidth: 24, halign: 'right' },
-        7: { cellWidth: 12, halign: 'center' },
-        8: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
+      head: [["#", "Kod", "Ürün", "Malzeme", "Miktar", "Birim", "Birim Fiyat", "KDV", "Toplam"]],
+      body: tableData,
+      margin: { left: marginX, right: marginX },
+      didDrawPage: () => {
+        drawHeader();
+        drawFooter();
       }
     });
 
-    // ===== TOTALS SECTION =====
-    const finalY = (doc as any).lastAutoTable.finalY + 6;
-    const totalsWidth = 80;
-    const totalsX = pageWidth - margin - totalsWidth;
-    
-    // Totals container with clean lines
-    const totalsData = [
-      { label: "ARA TOPLAM", value: formatCurrencyFn(calculateSubtotal(), activeCurrency), bold: false },
-      { label: "BRUT TOPLAM", value: formatCurrencyFn(calculateSubtotal(), activeCurrency), bold: false },
-      { label: "TOPLAM K.D.V (%20)", value: formatCurrencyFn(calculateKDV(), activeCurrency), bold: false },
-      { label: "GENEL TOPLAM", value: formatCurrencyFn(calculateTotal(), activeCurrency), bold: true },
-    ];
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
 
-    let totalsY = finalY;
-    totalsData.forEach((item, idx) => {
-      const isLast = idx === totalsData.length - 1;
-      const rowHeight = isLast ? 10 : 7;
-      
-      if (isLast) {
-        doc.setFillColor(15, 23, 42); // slate-900
-        doc.rect(totalsX, totalsY, totalsWidth, rowHeight, 'F');
-        doc.setTextColor(255, 255, 255);
-      } else {
-        doc.setFillColor(idx % 2 === 0 ? 248 : 241, idx % 2 === 0 ? 250 : 245, idx % 2 === 0 ? 252 : 249);
-        doc.rect(totalsX, totalsY, totalsWidth, rowHeight, 'F');
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.2);
-        doc.rect(totalsX, totalsY, totalsWidth, rowHeight, 'S');
-        doc.setTextColor(71, 85, 105);
-      }
-      
-      doc.setFontSize(isLast ? 9 : 8);
-      doc.setFont(fontName, item.bold ? "bold" : "normal");
-      doc.text(item.label, totalsX + 4, totalsY + (isLast ? 6.5 : 5));
-      doc.text(item.value, totalsX + totalsWidth - 4, totalsY + (isLast ? 6.5 : 5), { align: "right" });
-      
-      totalsY += rowHeight;
-    });
-
-    // ===== FOOTER FIELDS =====
-    let footerY = totalsY + 12;
-    
-    const footerFields = [
-      { label: 'Notlar', value: notlar },
-      { label: 'Opsiyon', value: opsiyon },
-      { label: 'Teslim Suresi', value: teslimSuresi },
-      { label: 'Odeme Sekli', value: odemeSekli },
-      { label: 'Teslim Yeri', value: teslimYeri }
-    ].filter(f => f.value);
-
-    if (footerFields.length > 0) {
-      doc.setFillColor(248, 250, 252);
-      doc.roundedRect(margin, footerY - 2, pageWidth - 2 * margin, 6, 1, 1, 'F');
-      doc.setFontSize(8);
-      doc.setTextColor(15, 23, 42);
-      doc.setFont(fontName, "bold");
-      doc.text("EK BILGILER", margin + 3, footerY + 2);
-      
-      footerY += 8;
-      doc.setFontSize(8);
-      
-      footerFields.forEach(field => {
-        doc.setFont(fontName, "bold");
-        doc.setTextColor(59, 130, 246);
-        doc.text(field.label + ":", margin, footerY);
-        doc.setFont(fontName, "normal");
-        doc.setTextColor(71, 85, 105);
-        
-        const maxWidth = pageWidth - 2 * margin - 30;
-        const lines = doc.splitTextToSize(field.value, maxWidth);
-        doc.text(lines, margin + 30, footerY);
-        footerY += (lines.length * 4) + 2;
-      });
-    }
-
-    // ===== SIGNATURE SECTION =====
-    footerY = Math.max(footerY + 10, pageHeight - 50);
-    
-    const signBoxWidth = 50;
-    const signBoxHeight = 22;
-    const gap = 10;
-    const startX = margin;
-
-    doc.setDrawColor(203, 213, 225);
-    doc.setLineWidth(0.3);
-
-    const signatureBoxes = [
-      { title: "SIPARIS ONAYI", subtitle: "Kase - Imza" },
-      { title: "TEDARIKCI ONAYI", subtitle: "Kase - Imza" },
-      { title: "ONAY TARIHI", subtitle: "__ / __ / ____" }
-    ];
-
-    signatureBoxes.forEach((box, idx) => {
-      const boxX = startX + (signBoxWidth + gap) * idx;
-      
-      doc.setFillColor(248, 250, 252);
-      doc.roundedRect(boxX, footerY, signBoxWidth, signBoxHeight, 2, 2, 'FD');
-      
-      doc.setFontSize(7);
-      doc.setFont(fontName, "bold");
-      doc.setTextColor(15, 23, 42);
-      doc.text(box.title, boxX + signBoxWidth/2, footerY + 5, { align: "center" });
-      
-      doc.setFont(fontName, "normal");
-      doc.setTextColor(148, 163, 184);
-      doc.text(box.subtitle, boxX + signBoxWidth/2, footerY + signBoxHeight - 4, { align: "center" });
-    });
-
-    // Contact closing
-    doc.setFontSize(8);
-    doc.setFont(fontName, "bold");
-    doc.setTextColor(15, 23, 42);
-    doc.text("Iyi calismalar dileriz. Saygilarimizla,", pageWidth - margin, footerY + 6, { align: "right" });
-    doc.setTextColor(59, 130, 246);
-    doc.text("Hayrettin DAYAN", pageWidth - margin, footerY + 11, { align: "right" });
-
-    // ===== FOOTER BAR =====
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, pageHeight - 10, pageWidth, 10, 'F');
-    
-    doc.setFontSize(7);
-    doc.setTextColor(148, 163, 184);
-    doc.text("DAYAN DISLI SANAYI | www.dayandisli.com | info@dayandisli.com | +90 536 583 74 20", pageWidth / 2, pageHeight - 4, { align: "center" });
+    // TOPLAM ALANI
+    const labelX = pageWidth - 50;
+    const valX = pageWidth - marginX;
+    doc.setFontSize(10);
+    doc.setFont("Roboto", "normal");
+    doc.text("Ara Toplam:", labelX, finalY);
+    doc.text(formatCurrencyFn(calculateSubtotal(), formData.activeCurrency), valX, finalY, { align: "right" });
+    doc.text("KDV (%20):", labelX, finalY + 6);
+    doc.text(formatCurrencyFn(calculateKDV(), formData.activeCurrency), valX, finalY + 6, { align: "right" });
+    doc.setFontSize(11);
+    doc.setFont("Roboto", "bold");
+    doc.text("Genel Toplam:", labelX, finalY + 12);
+    doc.text(formatCurrencyFn(calculateTotal(), formData.activeCurrency), valX, finalY + 12, { align: "right" });
 
     return doc;
   };
