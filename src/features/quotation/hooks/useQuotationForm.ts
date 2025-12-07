@@ -72,27 +72,12 @@ export function useQuotationForm() {
     }
   }, [firma, ilgiliKisi, tel, email, konu, products, notlar, opsiyon, teslimSuresi, odemeSekli, teslimYeri, activeCurrency, lastFinalizedTeklifNo]);
 
-  // Currency conversion helper
-  const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
-    if (fromCurrency === toCurrency) return amount;
-    const amountInTRY = amount * EXCHANGE_RATES[fromCurrency];
-    return amountInTRY / EXCHANGE_RATES[toCurrency];
-  };
-
-  // Handle global currency change with conversion
   const handleCurrencyChange = (newCurrency: string) => {
     if (newCurrency === activeCurrency) return;
-
-    const updatedProducts = products.map(p => ({
-      ...p,
-      birimFiyat: convertCurrency(p.birimFiyat, activeCurrency, newCurrency),
-      doviz: newCurrency
-    }));
-
-    setProducts(updatedProducts);
     setActiveCurrency(newCurrency);
     setFormChanged(true);
   };
+  
 
   const addRow = () => {
     const newId = Math.max(...products.map(p => p.id), 0) + 1;
