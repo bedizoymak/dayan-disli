@@ -28,35 +28,32 @@ export const createQuotationPDF = (
   doc.setFont("Roboto", "normal");
   doc.setTextColor(55, 65, 81); // text-gray-700
 
-  // ---- HEADER (tasarımdaki gibi) ----
-  const drawHeader = (pageNumber: number, totalPages: number) => {
-    // Üst border
-    doc.setDrawColor(229, 231, 235); // border-gray-200
-    doc.setLineWidth(0.4);
-    doc.line(0, 24, pageWidth, 24);
+  // ---- HEADER (Güncellendi) ----
+const drawHeader = (pageNumber: number, totalPages: number) => {
+  // Üst ince çizgi
+  doc.setDrawColor(229, 231, 235);
+  doc.setLineWidth(0.4);
+  doc.line(0, 28, pageWidth, 28);
 
-    // Logo + Firma adı
-    const logoImg = new Image();
-    logoImg.src = "/logo-header.png";
-    doc.addImage(logoImg, "PNG", marginX, 6, 30, 15);
+  // Logo (büyütüldü)
+  const logoImg = new Image();
+  logoImg.src = "/logo-header.png";
+  doc.addImage(logoImg, "PNG", marginX, 6, 45, 20); // genişlik ↑ yükseklik ↑
 
-    doc.setFont("Roboto", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(31, 41, 55); // text-gray-800
-    doc.text("DAYAN DİŞLİ & PROFİL TAŞLAMA", marginX + 34, 16);
+  // Sağ tarafa Teklif No & Tarih iki satır hizalı
+  // Sağ tarafa Teklif No & Tarih iki satır hizalı
+doc.setFont("Roboto", "normal");
+doc.setFontSize(10);
+doc.setTextColor(80, 80, 80);
 
-    // Sağda TEKLİF + Teklif No + Tarih
-    doc.setFont("Roboto", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(31, 41, 55);
-    doc.text("TEKLİF", pageWidth - marginX, 14, { align: "right" });
+const rightTextX = pageWidth - 70; // LOGO'ya göre daha içeri alındı
+const textY = 14;
 
-    doc.setFontSize(9);
-    doc.setFont("Roboto", "normal");
-    doc.setTextColor(107, 114, 128); // text-gray-500
-    doc.text(`Teklif No: ${teklifNo}`, pageWidth - marginX, 20, { align: "right" });
-    doc.text(`Tarih: ${today}`, pageWidth - marginX, 24, { align: "right" });
-  };
+doc.text(`Teklif No: ${teklifNo}`, rightTextX, textY);
+doc.text(`Tarih: ${today}`, rightTextX, textY + 6);
+
+};
+
 
   // ---- FOOTER (tasarımdaki gibi) ----
   const drawFooter = (pageNumber: number, totalPages: number) => {
@@ -93,7 +90,8 @@ export const createQuotationPDF = (
   // SATICI & ALICI kart genişliği
   const cardGap = 6;
   const cardWidth = (pageWidth - 2 * marginX - cardGap) / 2;
-  const cardHeight = 38;
+  const cardHeight = 30;
+  const maxValueWidth = cardWidth - 35;
 
   // ---- SATICI BİLGİLERİ ----
   doc.setDrawColor(229, 231, 235); // border-gray-200
@@ -103,7 +101,7 @@ export const createQuotationPDF = (
   doc.setFont("Roboto", "bold");
   doc.setFontSize(9);
   doc.setTextColor(31, 41, 55);
-  doc.text("SATICI BİLGİLERİ", marginX + 3, y + 6);
+  doc.text("TEDARİKÇİ BİLGİLERİ", marginX + 3, y + 6);
 
   doc.setFont("Roboto", "normal");
   doc.setFontSize(8);
@@ -116,7 +114,6 @@ export const createQuotationPDF = (
   const sellerRows: [string, string][] = [
     ["Firma Adı:", "DAYAN DİŞLİ & PROFİL TAŞLAMA"],
     ["İlgili Kişi:", "Hayrettin Dayan"],
-    ["Adres:", "İkitelli O.S.B. Çevre Sanayi Sitesi"],
     ["Telefon:", "+90 536 583 74 20"],
     ["Email:", "info@dayandisli.com"],
   ];
@@ -124,9 +121,17 @@ export const createQuotationPDF = (
   sellerRows.forEach(([label, value]) => {
     doc.text(label, labelX, lineY);
     doc.setTextColor(55, 65, 81); // value text-gray-700
-    doc.text(value, valueX, lineY);
+    
+    if (label === "Firma Adı:") {
+      const wrappedText = doc.splitTextToSize(value, maxValueWidth);
+      doc.text(wrappedText, valueX, lineY);
+      lineY += wrappedText.length * 4.5;
+    } else {
+      doc.text(value, valueX, lineY);
+      lineY += 5;
+    }
+    
     doc.setTextColor(107, 114, 128);
-    lineY += 5;
   });
 
   // ---- ALICI BİLGİLERİ ----
@@ -138,7 +143,7 @@ export const createQuotationPDF = (
   doc.setFont("Roboto", "bold");
   doc.setFontSize(9);
   doc.setTextColor(31, 41, 55);
-  doc.text("ALICI BİLGİLERİ", buyerX + 3, y + 6);
+  doc.text("MÜŞTERİ BİLGİLERİ", buyerX + 3, y + 6);
 
   doc.setFont("Roboto", "normal");
   doc.setFontSize(8);
@@ -151,7 +156,6 @@ export const createQuotationPDF = (
   const buyerRows: [string, string][] = [
     ["Firma Adı:", formData.firma || ""],
     ["İlgili Kişi:", formData.ilgiliKisi || ""],
-    ["Adres:", ""],
     ["Telefon:", formData.tel || ""],
     ["Email:", formData.email || ""],
   ];
@@ -159,21 +163,58 @@ export const createQuotationPDF = (
   buyerRows.forEach(([label, value]) => {
     doc.text(label, buyerLabelX, lineY);
     doc.setTextColor(55, 65, 81);
-    doc.text(value || "-", buyerValueX, lineY);
+    
+    const displayValue = value || "-";
+    
+    if (label === "Firma Adı:") {
+      const wrappedText = doc.splitTextToSize(displayValue, maxValueWidth);
+      doc.text(wrappedText, buyerValueX, lineY);
+      lineY += wrappedText.length * 4.5;
+    } else {
+      doc.text(displayValue, buyerValueX, lineY);
+      lineY += 5;
+    }
+    
     doc.setTextColor(107, 114, 128);
-    lineY += 5;
   });
 
-  // ---- AÇIKLAMA METNİ ----
-  y = y + cardHeight + 10;
-  doc.setFont("Roboto", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(55, 65, 81);
-  doc.text(
-    "Aşağıda belirtilen ürünler ve hizmetler için hazırlanan fiyat teklifimiz bilgilerinize sunulmuştur.",
-    marginX,
-    y
-  );
+  // ---- AÇIKLAMA KUTUSU ----
+y = y + cardHeight + 10;
+
+const descBoxHeight = 34;
+doc.setDrawColor(229, 231, 235); // border-gray-200
+doc.setFillColor(252, 252, 253); // çok açık gri BG
+doc.rect(marginX, y, pageWidth - 2 * marginX, descBoxHeight, "FD");
+
+// Metin içeriği
+const ilgili = formData.ilgiliKisi ? formData.ilgiliKisi : "";
+const descX = marginX + 3;
+let descY = y + 6;
+
+doc.setFont("Roboto", "bold");
+doc.setFontSize(9);
+doc.setTextColor(31, 41, 55);
+doc.text(`Sayın ${ilgili},`, descX, descY);
+
+doc.setFont("Roboto", "normal");
+doc.setFontSize(8);
+doc.setTextColor(55, 65, 81);
+doc.text(
+  "Aşağıda özellikleri ve istenen şartları tanımlanmış ürünlerin/hizmetlerin sipariş teklif formudur.",
+  descX,
+  descY + 9
+);
+
+doc.text("İyi çalışmalar dileriz.", descX, descY + 14);
+
+doc.setFont("Roboto", "bold");
+doc.setFontSize(9);
+doc.text("Saygılarımızla,", descX, descY + 21);
+doc.text("Hayrettin DAYAN", descX, descY + 25);
+
+// Tablo başlangıcı için yeni y
+y = y + descBoxHeight + 8;
+
 
   // ---- ÜRÜN TABLOSU ----
   const tableStartY = y + 6;
