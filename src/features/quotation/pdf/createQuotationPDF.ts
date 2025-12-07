@@ -31,26 +31,111 @@ export const createQuotationPDF = (
   // ---- HEADER (Güncellendi) ----
 const drawHeader = (pageNumber: number, totalPages: number) => {
   // Üst ince çizgi
-  doc.setDrawColor(229, 231, 235);
-  doc.setLineWidth(0.4);
-  doc.line(0, 28, pageWidth, 28);
+  doc.setDrawColor(55, 65, 81);
+doc.setLineWidth(0.6);
+doc.line(0, 28, pageWidth, 28);
 
-  // Logo (büyütüldü)
-  const logoImg = new Image();
-  logoImg.src = "/logo-header.png";
-  doc.addImage(logoImg, "PNG", marginX, 6, 45, 20); // genişlik ↑ yükseklik ↑
 
-  // Sağ tarafa Teklif No & Tarih iki satır hizalı
-  // Sağ tarafa Teklif No & Tarih iki satır hizalı
+ // Logo
+const logoImg = new Image();
+logoImg.src = "/logo-header.png";
+doc.addImage(logoImg, "PNG", marginX, 6, 40, 17);
+
+  // Başlık
+doc.setFont("Roboto", "bold");
+doc.setFontSize(14);
+doc.setTextColor(55, 65, 81);
+
+const titleText = "SİPARİŞ TEKLİF FORMU";
+const titleWidth = doc.getTextWidth(titleText);
+const titleX = (pageWidth - titleWidth) / 2;
+const titleY = 17;
+
+doc.text(titleText, titleX, titleY);
+
+// --- Sağ bilgi kutusu ---
+const fontSize = 7;
+const rightMargin = 5;
+const paddingX = 3;
+const paddingY = 2;
+const lineGap = 5;
+
+// Döküman No hesaplama → "D 001-1"
+const teklifSuffix = teklifNo.slice(-3).trim();
+const documentNo = `D ${teklifSuffix}-1`;
+
+// Etiket / değer metinleri
+const labelDate = "Tarih: ";
+const valueDate = today;
+
+const labelDoc  = "Döküman No: ";
+const valueDoc  = documentNo;
+
+const labelOffer = "Teklif No: ";
+const valueOffer = teklifNo;
+
+// Bir satırın gerçek genişliğini (bold + normal) ölçen yardımcı fonksiyon
+const measureLineWidth = (label: string, value: string) => {
+  doc.setFont("Roboto", "bold");
+  doc.setFontSize(fontSize);
+  const labelW = doc.getTextWidth(label);
+
+  doc.setFont("Roboto", "normal");
+  const valueW = doc.getTextWidth(value);
+
+  return labelW + valueW;
+};
+
+const w1 = measureLineWidth(labelDate, valueDate);
+const w2 = measureLineWidth(labelDoc, valueDoc);
+const w3 = measureLineWidth(labelOffer, valueOffer);
+
+const boxTextWidth = Math.max(w1, w2, w3);
+
+// Kutu ölçüleri (3 satır + rahat boşluk)
+const boxWidth = boxTextWidth + paddingX * 2;
+const boxHeight = 20;
+
+// Dikey ortalama: logo (6–26) ile çizgi (28) arası
+const boxY = (6 + 22) / 2 - boxHeight / 2;
+const boxX = pageWidth - rightMargin - boxWidth;
+
+// Arka plan kutusu
+doc.setFillColor(245, 245, 245);
+doc.setDrawColor(200, 200, 200);
+doc.setLineWidth(0.3);
+doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 1.5, 1.5, "FD");
+
+// Metin yerleşimi (sola hizalı, etiket bold, değer normal)
+let y = boxY + 6;
+const x = boxX + paddingX;
+
+// Satır 1: Tarih
+doc.setFont("Roboto", "bold");
+doc.setFontSize(fontSize);
+doc.text(labelDate, x, y);
+let offset = doc.getTextWidth(labelDate);
+
 doc.setFont("Roboto", "normal");
-doc.setFontSize(10);
-doc.setTextColor(80, 80, 80);
+doc.text(valueDate, x + offset, y);
 
-const rightTextX = pageWidth - 70; // LOGO'ya göre daha içeri alındı
-const textY = 14;
+// Satır 2: Döküman No
+y += lineGap;
+doc.setFont("Roboto", "bold");
+doc.text(labelDoc, x, y);
+offset = doc.getTextWidth(labelDoc);
 
-doc.text(`Teklif No: ${teklifNo}`, rightTextX, textY);
-doc.text(`Tarih: ${today}`, rightTextX, textY + 6);
+doc.setFont("Roboto", "normal");
+doc.text(valueDoc, x + offset, y);
+
+// Satır 3: Teklif No
+y += lineGap;
+doc.setFont("Roboto", "bold");
+doc.text(labelOffer, x, y);
+offset = doc.getTextWidth(labelOffer);
+
+doc.setFont("Roboto", "normal");
+doc.text(valueOffer, x + offset, y);
 
 };
 
@@ -159,6 +244,7 @@ doc.text(`Tarih: ${today}`, rightTextX, textY + 6);
     y = y + cardHeight + 10;
   
     // ---- AÇIKLAMA KUTUSU ----
+
 
 const descBoxHeight = 34;
 doc.setDrawColor(229, 231, 235); // border-gray-200
