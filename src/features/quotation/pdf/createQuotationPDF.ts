@@ -83,103 +83,82 @@ doc.text(`Tarih: ${today}`, rightTextX, textY + 6);
     );
   };
 
-  // ---- GÖVDE İÇERİK (HEADER/FOOTER HARİÇ) ----
+    // ---- GÖVDE İÇERİK (HEADER/FOOTER HARİÇ) ----
+    let y = 32;
 
-  let y = 32; // Header’dan sonraki boşluk
-
-  // SATICI & ALICI kart genişliği
-  const cardGap = 6;
-  const cardWidth = (pageWidth - 2 * marginX - cardGap) / 2;
-  const cardHeight = 30;
-  const maxValueWidth = cardWidth - 35;
-
-  // ---- SATICI BİLGİLERİ ----
-  doc.setDrawColor(229, 231, 235); // border-gray-200
-  doc.setFillColor(249, 250, 251); // bg-gray-50
-  doc.rect(marginX, y, cardWidth, cardHeight, "FD");
-
-  doc.setFont("Roboto", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(31, 41, 55);
-  doc.text("TEDARİKÇİ BİLGİLERİ", marginX + 3, y + 6);
-
-  doc.setFont("Roboto", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(107, 114, 128); // label text-gray-500
-
-  let lineY = y + 12;
-  const labelX = marginX + 3;
-  const valueX = marginX + 28;
-
-  const sellerRows: [string, string][] = [
-    ["Firma Adı:", "DAYAN DİŞLİ & PROFİL TAŞLAMA"],
-    ["İlgili Kişi:", "Hayrettin Dayan"],
-    ["Telefon:", "+90 536 583 74 20"],
-    ["Email:", "info@dayandisli.com"],
-  ];
-
-  sellerRows.forEach(([label, value]) => {
-    doc.text(label, labelX, lineY);
-    doc.setTextColor(55, 65, 81); // value text-gray-700
-    
-    if (label === "Firma Adı:") {
-      const wrappedText = doc.splitTextToSize(value, maxValueWidth);
-      doc.text(wrappedText, valueX, lineY);
-      lineY += wrappedText.length * 4.5;
-    } else {
-      doc.text(value, valueX, lineY);
-      lineY += 5;
-    }
-    
-    doc.setTextColor(107, 114, 128);
-  });
-
-  // ---- ALICI BİLGİLERİ ----
-  const buyerX = marginX + cardWidth + cardGap;
-  doc.setDrawColor(229, 231, 235);
-  doc.setFillColor(249, 250, 251);
-  doc.rect(buyerX, y, cardWidth, cardHeight, "FD");
-
-  doc.setFont("Roboto", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(31, 41, 55);
-  doc.text("MÜŞTERİ BİLGİLERİ", buyerX + 3, y + 6);
-
-  doc.setFont("Roboto", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(107, 114, 128);
-
-  lineY = y + 12;
-  const buyerLabelX = buyerX + 3;
-  const buyerValueX = buyerX + 28;
-
-  const buyerRows: [string, string][] = [
-    ["Firma Adı:", formData.firma || ""],
-    ["İlgili Kişi:", formData.ilgiliKisi || ""],
-    ["Telefon:", formData.tel || ""],
-    ["Email:", formData.email || ""],
-  ];
-
-  buyerRows.forEach(([label, value]) => {
-    doc.text(label, buyerLabelX, lineY);
-    doc.setTextColor(55, 65, 81);
-    
-    const displayValue = value || "-";
-    
-    if (label === "Firma Adı:") {
-      const wrappedText = doc.splitTextToSize(displayValue, maxValueWidth);
-      doc.text(wrappedText, buyerValueX, lineY);
-      lineY += wrappedText.length * 4.5;
-    } else {
-      doc.text(displayValue, buyerValueX, lineY);
-      lineY += 5;
-    }
-    
-    doc.setTextColor(107, 114, 128);
-  });
-
-  // ---- AÇIKLAMA KUTUSU ----
-y = y + cardHeight + 10;
+    // SATICI - ALICI Kart Hizalama
+    const cardGap = 6;
+    const cardWidth = (pageWidth - 2 * marginX - cardGap) / 2;
+    const maxValueWidth = cardWidth - 35;
+    const buyerX = marginX + cardWidth + cardGap;
+  
+    const sellerRows = [
+      ["Firma Adı:", "DAYAN DİŞLİ & PROFİL TAŞLAMA"],
+      ["İlgili Kişi:", "Hayrettin Dayan"],
+      ["Telefon:", "+90 536 583 74 20"],
+      ["Email:", "info@dayandisli.com"],
+    ];
+  
+    const buyerRows = [
+      ["Firma Adı:", formData.firma || "-"],
+      ["İlgili Kişi:", formData.ilgiliKisi || "-"],
+      ["Telefon:", formData.tel || "-"],
+      ["Email:", formData.email || "-"],
+    ];
+  
+    const rowHeights = sellerRows.map((row, i) => {
+      const sLines = doc.splitTextToSize(row[1], maxValueWidth).length;
+      const bLines = doc.splitTextToSize(buyerRows[i][1], maxValueWidth).length;
+   
+      const maxLines = Math.max(sLines, bLines);
+   
+      // Sadece "Firma Adı" satırları için satır yüksekliği azalt
+      if (i === 0) {
+        return maxLines * 2; // 🔹 daha kompakt, test edilmiş değer
+      }
+      return maxLines * 5; // diğerlerinde dokunma
+    });
+   
+  
+    const cardHeight = 5 + rowHeights.reduce((sum, h) => sum + h, 0);
+  
+    // Kart Çerçeveleri
+    doc.setDrawColor(229,231,235);
+    doc.setFillColor(249,250,251);
+    doc.rect(marginX, y, cardWidth, cardHeight, "FD");
+    doc.rect(buyerX, y, cardWidth, cardHeight, "FD");
+  
+    // Başlıklar
+    doc.setFont("Roboto", "bold").setFontSize(9).setTextColor(31,41,55);
+    doc.text("TEDARİKÇİ BİLGİLERİ", marginX + 3, y + 6);
+    doc.text("MÜŞTERİ BİLGİLERİ", buyerX + 3, y + 6);
+  
+    // İçerik Yazımı
+    doc.setFont("Roboto","normal").setFontSize(8);
+    let offsetY = y + 12;
+  
+    sellerRows.forEach(([label, sValue], i) => {
+      const bValue = buyerRows[i][1];
+      const sText = doc.splitTextToSize(sValue, maxValueWidth);
+      const bText = doc.splitTextToSize(bValue, maxValueWidth);
+  
+      // Label'lar
+      doc.setTextColor(107,114,128);
+      doc.text(label, marginX + 3, offsetY);
+      doc.text(label, buyerX + 3, offsetY);
+  
+      // Değerler
+      doc.setTextColor(55,65,81);
+      doc.text(sText, marginX + 28, offsetY);
+      doc.text(bText, buyerX + 28, offsetY);
+  
+      offsetY += rowHeights[i];
+    });
+  
+    // Sonraki kutuya geçiş
+    y = y + cardHeight + 10;
+  
+    // ---- AÇIKLAMA KUTUSU ----
 
 const descBoxHeight = 34;
 doc.setDrawColor(229, 231, 235); // border-gray-200
