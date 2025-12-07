@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { fontRobotoRegular, fontRobotoBold } from "@/lib/pdfAssets/font-roboto";
-import { logoBase64 } from "@/lib/pdfAssets/logo-dayan";
+
 import { QuotationFormData, ProductRow } from "../types";
 
 export const createQuotationPDF = (
@@ -17,27 +17,30 @@ export const createQuotationPDF = (
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginX = 12;
-  const primaryColor: [number, number, number] = [0, 51, 102];
-  const tableHead: [number, number, number] = [235, 245, 255];
+  const primaryColor = [0, 51, 102];
+  const tableHead = [240, 240, 240];
 
   const today = new Date().toLocaleDateString("tr-TR");
 
-  // Font yükle
-  doc.addFileToVFS("Roboto-Regular.ttf", fontRobotoRegular);
-  doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+  // Register Fonts
+doc.addFileToVFS("Roboto-Regular.ttf", fontRobotoRegular);
+doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
 
-  doc.addFileToVFS("Roboto-Bold.ttf", fontRobotoBold);
-  doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+doc.addFileToVFS("Roboto-Bold.ttf", fontRobotoBold);
+doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
 
-  doc.setFont("Roboto", "normal");
+doc.setFont("Roboto", "normal");
 
-  const drawHeader = () => {
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, pageWidth, 22, "F");
 
-    if (logoBase64) {
-      doc.addImage(logoBase64, "PNG", marginX, 4, 30, 14);
-    }
+
+const drawHeader = () => {
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, pageWidth, 22, "F");
+
+  // Logo
+  const logoImg = new Image();
+  logoImg.src = "/logo-header.png";
+  doc.addImage(logoImg, "PNG", marginX, 4, 30, 14);
 
     doc.setFontSize(18);
     doc.setTextColor(255, 255, 255);
