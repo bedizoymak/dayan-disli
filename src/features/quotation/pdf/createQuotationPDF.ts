@@ -1,7 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { fontRobotoRegular, fontRobotoBold } from "@/lib/pdfAssets/font-roboto";
-
 import { QuotationFormData, ProductRow } from "../types";
 
 export const createQuotationPDF = (
@@ -17,164 +16,357 @@ export const createQuotationPDF = (
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginX = 12;
-  const primary = [56, 22, 100]; // #381664
   const today = new Date().toLocaleDateString("tr-TR");
-  const tableHead = [240, 240, 240];
 
-  // Fonts
+  // ---- Fonts ----
   doc.addFileToVFS("Roboto-Regular.ttf", fontRobotoRegular);
   doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+
   doc.addFileToVFS("Roboto-Bold.ttf", fontRobotoBold);
   doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+
   doc.setFont("Roboto", "normal");
+  doc.setTextColor(55, 65, 81); // text-gray-700
 
-  // HEADER
-  const drawHeader = () => {
-    doc.setFillColor(247, 246, 248);
-    doc.rect(0, 0, pageWidth, 30, "F");
+  // ---- HEADER (tasarımdaki gibi) ----
+  const drawHeader = (pageNumber: number, totalPages: number) => {
+    // Üst border
+    doc.setDrawColor(229, 231, 235); // border-gray-200
+    doc.setLineWidth(0.4);
+    doc.line(0, 24, pageWidth, 24);
 
+    // Logo + Firma adı
     const logoImg = new Image();
     logoImg.src = "/logo-header.png";
-    doc.addImage(logoImg, "PNG", marginX, 5, 20, 20);
+    doc.addImage(logoImg, "PNG", marginX, 6, 30, 15);
 
     doc.setFont("Roboto", "bold");
-    doc.setFontSize(20);
-    doc.setTextColor(...primary);
-    doc.text("TEKLİF", pageWidth - marginX, 15, { align: "right" });
+    doc.setFontSize(11);
+    doc.setTextColor(31, 41, 55); // text-gray-800
+    doc.text("DAYAN DİŞLİ & PROFİL TAŞLAMA", marginX + 34, 16);
+
+    // Sağda TEKLİF + Teklif No + Tarih
+    doc.setFont("Roboto", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(31, 41, 55);
+    doc.text("TEKLİF", pageWidth - marginX, 14, { align: "right" });
 
     doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text(`Teklif No: ${teklifNo}`, pageWidth - marginX, 21, { align: "right" });
-    doc.text(`Tarih: ${today}`, pageWidth - marginX, 26, { align: "right" });
-  };
-
-  // FOOTER
-  const drawFooter = () => {
-    const pageInfo = doc.getCurrentPageInfo();
-    const pageNumber = pageInfo.pageNumber;
-
-    doc.setFontSize(7);
-    doc.setTextColor(80, 80, 80);
     doc.setFont("Roboto", "normal");
-    doc.text(
-      "İkitelli O.S.B. Çevre Sanayi Sitesi 8. Blok No:45/47 Başakşehir / İstanbul | Tel: +90 536 583 74 20 | E-mail: info@dayandisli.com | Web: www.dayandisli.com",
-      pageWidth / 2,
-      pageHeight - 7,
-      { align: "center" }
-    );
-
-    doc.text(`Sayfa ${pageNumber}`, pageWidth - marginX, pageHeight - 5, { align: "right" });
+    doc.setTextColor(107, 114, 128); // text-gray-500
+    doc.text(`Teklif No: ${teklifNo}`, pageWidth - marginX, 20, { align: "right" });
+    doc.text(`Tarih: ${today}`, pageWidth - marginX, 24, { align: "right" });
   };
 
-  // DRAW HEADER
-  drawHeader();
+  // ---- FOOTER (tasarımdaki gibi) ----
+  const drawFooter = (pageNumber: number, totalPages: number) => {
+    // Arka plan bar
+    doc.setFillColor(243, 244, 246); // bg-gray-100
+    doc.rect(0, pageHeight - 14, pageWidth, 14, "F");
 
-  let y = 40;
-  doc.setTextColor(60, 60, 60);
+    doc.setFont("Roboto", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(55, 65, 81); // text-gray-700
 
-  // SATICI
-  doc.setDrawColor(220, 220, 220);
-  doc.rect(marginX, y, pageWidth / 2 - marginX * 1.5, 35);
+    const footerText =
+      "Adres: İkitelli O.S.B. Çevre Sanayi Sitesi 8. Blok No:45/47 Başakşehir / İstanbul  |  " +
+      "Tel: +90 536 583 74 20  |  " +
+      "Email: info@dayandisli.com  |  " +
+      "Web: www.dayandisli.com";
+
+    doc.text(footerText, pageWidth / 2, pageHeight - 8.5, {
+      align: "center",
+    });
+
+    doc.text(
+      `Sayfa ${pageNumber} / ${totalPages}`,
+      pageWidth - marginX,
+      pageHeight - 8.5,
+      { align: "right" }
+    );
+  };
+
+  // ---- GÖVDE İÇERİK (HEADER/FOOTER HARİÇ) ----
+
+  let y = 32; // Header’dan sonraki boşluk
+
+  // SATICI & ALICI kart genişliği
+  const cardGap = 6;
+  const cardWidth = (pageWidth - 2 * marginX - cardGap) / 2;
+  const cardHeight = 38;
+
+  // ---- SATICI BİLGİLERİ ----
+  doc.setDrawColor(229, 231, 235); // border-gray-200
+  doc.setFillColor(249, 250, 251); // bg-gray-50
+  doc.rect(marginX, y, cardWidth, cardHeight, "FD");
+
   doc.setFont("Roboto", "bold");
-  doc.setFontSize(10);
-  doc.text("SATICI BİLGİLERİ", marginX + 2, y + 5);
+  doc.setFontSize(9);
+  doc.setTextColor(31, 41, 55);
+  doc.text("SATICI BİLGİLERİ", marginX + 3, y + 6);
 
   doc.setFont("Roboto", "normal");
   doc.setFontSize(8);
-  doc.text("DAYAN DİŞLİ & PROFİL TAŞLAMA", marginX + 2, y + 10);
-  doc.text("İkitelli OSB İstanbul", marginX + 2, y + 15);
-  doc.text("Tel: +90 536 583 74 20", marginX + 2, y + 20);
-  doc.text("Email: info@dayandisli.com", marginX + 2, y + 25);
+  doc.setTextColor(107, 114, 128); // label text-gray-500
 
-  // ALICI
-  const rightX = pageWidth / 2 + 2;
-  doc.rect(rightX, y, pageWidth / 2 - marginX * 1.5, 35);
+  let lineY = y + 12;
+  const labelX = marginX + 3;
+  const valueX = marginX + 28;
+
+  const sellerRows: [string, string][] = [
+    ["Firma Adı:", "DAYAN DİŞLİ & PROFİL TAŞLAMA"],
+    ["İlgili Kişi:", "Hayrettin Dayan"],
+    ["Adres:", "İkitelli O.S.B. Çevre Sanayi Sitesi"],
+    ["Telefon:", "+90 536 583 74 20"],
+    ["Email:", "info@dayandisli.com"],
+  ];
+
+  sellerRows.forEach(([label, value]) => {
+    doc.text(label, labelX, lineY);
+    doc.setTextColor(55, 65, 81); // value text-gray-700
+    doc.text(value, valueX, lineY);
+    doc.setTextColor(107, 114, 128);
+    lineY += 5;
+  });
+
+  // ---- ALICI BİLGİLERİ ----
+  const buyerX = marginX + cardWidth + cardGap;
+  doc.setDrawColor(229, 231, 235);
+  doc.setFillColor(249, 250, 251);
+  doc.rect(buyerX, y, cardWidth, cardHeight, "FD");
+
   doc.setFont("Roboto", "bold");
-  doc.text("ALICI BİLGİLERİ", rightX + 2, y + 5);
+  doc.setFontSize(9);
+  doc.setTextColor(31, 41, 55);
+  doc.text("ALICI BİLGİLERİ", buyerX + 3, y + 6);
 
   doc.setFont("Roboto", "normal");
-  doc.text(formData.firma, rightX + 2, y + 10);
-  doc.text(formData.ilgiliKisi, rightX + 2, y + 15);
-  doc.text(formData.tel, rightX + 2, y + 20);
-  doc.text(formData.email, rightX + 2, y + 25);
+  doc.setFontSize(8);
+  doc.setTextColor(107, 114, 128);
 
-  y += 45;
+  lineY = y + 12;
+  const buyerLabelX = buyerX + 3;
+  const buyerValueX = buyerX + 28;
+
+  const buyerRows: [string, string][] = [
+    ["Firma Adı:", formData.firma || ""],
+    ["İlgili Kişi:", formData.ilgiliKisi || ""],
+    ["Adres:", ""],
+    ["Telefon:", formData.tel || ""],
+    ["Email:", formData.email || ""],
+  ];
+
+  buyerRows.forEach(([label, value]) => {
+    doc.text(label, buyerLabelX, lineY);
+    doc.setTextColor(55, 65, 81);
+    doc.text(value || "-", buyerValueX, lineY);
+    doc.setTextColor(107, 114, 128);
+    lineY += 5;
+  });
+
+  // ---- AÇIKLAMA METNİ ----
+  y = y + cardHeight + 10;
   doc.setFont("Roboto", "normal");
-  doc.setFontSize(10);
-  doc.text("Aşağıda belirtilen ürünler ve hizmetler için hazırlanan fiyat teklifimiz:", marginX, y);
+  doc.setFontSize(9);
+  doc.setTextColor(55, 65, 81);
+  doc.text(
+    "Aşağıda belirtilen ürünler ve hizmetler için hazırlanan fiyat teklifimiz bilgilerinize sunulmuştur.",
+    marginX,
+    y
+  );
 
-  // TABLE
-  const tableData = formData.products.map((p: ProductRow, i) => [
-    i + 1,
-    p.kod,
-    p.cins,
-    p.malzeme,
+  // ---- ÜRÜN TABLOSU ----
+  const tableStartY = y + 6;
+
+  const tableHead = [
+    [
+      "No",
+      "Kod",
+      "Açıklama",
+      "Malzeme",
+      "Miktar",
+      "Birim",
+      "Birim Fiyat",
+      "KDV",
+      "Toplam",
+    ],
+  ];
+
+  const tableBody = formData.products.map((p: ProductRow, index) => [
+    index + 1,
+    p.kod || "",
+    p.cins || "",
+    p.malzeme || "",
     p.miktar.toString(),
-    p.birim,
+    p.birim || "",
     formatCurrencyFn(p.birimFiyat, formData.activeCurrency),
     "%20",
-    formatCurrencyFn(calculateRowTotal(p), formData.activeCurrency)
+    formatCurrencyFn(calculateRowTotal(p), formData.activeCurrency),
   ]);
 
   autoTable(doc, {
-    startY: y + 4,
+    startY: tableStartY,
+    head: tableHead,
+    body: tableBody,
     theme: "grid",
-    head: [["No", "Kod", "Ürün", "Malz.", "Miktar", "Birim", "Birim Fiyat", "KDV", "Toplam"]],
-    body: tableData,
-    headStyles: { fillColor: tableHead, textColor: [50, 50, 50], fontStyle: "bold" },
-    styles: { font: "Roboto", fontSize: 8 },
     margin: { left: marginX, right: marginX },
-    didDrawPage: () => {
-      drawHeader();
-      drawFooter();
+    styles: {
+      font: "Roboto",
+      fontSize: 8,
+      textColor: [75, 85, 99], // gray-600
+      cellPadding: 2,
+    },
+    headStyles: {
+      fillColor: [243, 244, 246], // bg-gray-100
+      textColor: [75, 85, 99],
+      fontStyle: "bold",
+    },
+    alternateRowStyles: {
+      fillColor: [249, 250, 251], // bg-gray-50
+    },
+    columnStyles: {
+      0: { cellWidth: 10 }, // No
+      2: { cellWidth: 40 }, // Açıklama
+      4: { halign: "right" }, // Miktar
+      6: { halign: "right" }, // Birim Fiyat
+      7: { halign: "right" }, // KDV
+      8: { halign: "right" }, // Toplam
     },
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY + 8;
+  const finalTableY = (doc as any).lastAutoTable.finalY;
 
-  // TOTALS
-  const labelX = pageWidth - 60;
-  const valueX = pageWidth - marginX;
+  // ---- TOPLAM KUTUSU (sağda, tasarımdaki gibi) ----
+  const totalsCardWidth = 60;
+  const totalsX = pageWidth - marginX - totalsCardWidth;
+  let totalsY = finalTableY + 6;
 
-  doc.setFontSize(9);
-  doc.text("Ara Toplam:", labelX, finalY);
-  doc.text(formatCurrencyFn(calculateSubtotal(), formData.activeCurrency), valueX, finalY, { align: "right" });
+  doc.setDrawColor(229, 231, 235);
+  doc.setFillColor(255, 255, 255);
+  doc.rect(totalsX, totalsY, totalsCardWidth, 24, "S");
 
-  doc.text("KDV (%20):", labelX, finalY + 6);
-  doc.text(formatCurrencyFn(calculateKDV(), formData.activeCurrency), valueX, finalY + 6, { align: "right" });
-
-  doc.setFont("Roboto", "bold");
-  doc.setFontSize(11);
-  doc.text("Genel Toplam:", labelX, finalY + 12);
-  doc.text(formatCurrencyFn(calculateTotal(), formData.activeCurrency), valueX, finalY + 12, { align: "right" });
   doc.setFont("Roboto", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(107, 114, 128);
 
-  // NOTES
-  let notesY = finalY + 25;
+  const labelColX = totalsX + 3;
+  const valueColX = totalsX + totalsCardWidth - 3;
+
+  const araToplam = calculateSubtotal();
+  const kdv = calculateKDV();
+  const genelToplam = calculateTotal();
+
+  // Ara Toplam
+  doc.text("Ara Toplam", labelColX, totalsY + 7);
+  doc.setTextColor(55, 65, 81);
+  doc.text(
+    formatCurrencyFn(araToplam, formData.activeCurrency),
+    valueColX,
+    totalsY + 7,
+    { align: "right" }
+  );
+
+  // KDV
+  doc.setTextColor(107, 114, 128);
+  doc.text("KDV (%20)", labelColX, totalsY + 13);
+  doc.setTextColor(55, 65, 81);
+  doc.text(
+    formatCurrencyFn(kdv, formData.activeCurrency),
+    valueColX,
+    totalsY + 13,
+    { align: "right" }
+  );
+
+  // Genel Toplam
+  doc.setFont("Roboto", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(31, 41, 55);
+  doc.text("Genel Toplam", labelColX, totalsY + 20);
+  doc.text(
+    formatCurrencyFn(genelToplam, formData.activeCurrency),
+    valueColX,
+    totalsY + 20,
+    { align: "right" }
+  );
+
+  // ---- NOTLAR & İMZA ----
+  let notesY = totalsY + 32;
+
+  // Notlar
+  doc.setFont("Roboto", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(31, 41, 55);
+  doc.text("NOTLAR VE ŞARTLAR", marginX, notesY);
+
   const notes = [
     "Teklifin geçerlilik süresi 15 gündür.",
     "Ödeme: %50 peşin, %50 teslimatta.",
     "Teslim süresi sipariş onayından itibaren 4 haftadır.",
-    "Fiyatlarımıza KDV dahil değildir."
+    "Fiyatlarımıza KDV dahil değildir.",
   ];
 
-  doc.setFont("Roboto", "bold");
-  doc.setFontSize(9);
-  doc.text("NOTLAR VE ŞARTLAR", marginX, notesY);
   doc.setFont("Roboto", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(107, 114, 128);
 
-  notesY += 5;
-  notes.forEach(note => {
-    doc.circle(marginX + 1, notesY - 1.5, 0.7, "F");
-    doc.text(note, marginX + 5, notesY);
-    notesY += 5;
+  let bulletY = notesY + 5;
+  notes.forEach((note) => {
+    doc.circle(marginX + 1.5, bulletY - 1.5, 0.6, "F");
+    doc.text(note, marginX + 5, bulletY);
+    bulletY += 4.5;
   });
 
-  // SIGN
-  doc.text("Yetkili İmza", pageWidth - 40, finalY + 25);
-  doc.setDrawColor(160, 160, 160);
-  doc.setLineDash([2, 2], 0);
-  doc.line(pageWidth - 60, finalY + 45, pageWidth - 10, finalY + 45);
+  // İmza alanı (sağ)
+  const signBoxX = pageWidth - marginX - 48;
+  const signBoxWidth = 48;
+  const signBaseline = notesY + 28;
+
+  doc.setFont("Roboto", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(31, 41, 55);
+  doc.text("Yetkili İmza", signBoxX + signBoxWidth / 2, notesY + 5, {
+    align: "center",
+  });
+
+  doc.setDrawColor(156, 163, 175); // border-gray-400
+  doc.setLineWidth(0.4);
+  (doc as any).setLineDash([2, 2], 0);
+  doc.line(
+    signBoxX + 4,
+    signBaseline,
+    signBoxX + signBoxWidth - 4,
+    signBaseline
+  );
+  (doc as any).setLineDash([] as any, 0);
+
+  // ---- GÖRSEL ALANI (PHOTO AREA) ----
+  const photoY = bulletY + 6;
+  const photoHeight = 40;
+
+  doc.setDrawColor(209, 213, 219); // border-gray-300
+  doc.setLineWidth(0.6);
+  (doc as any).setLineDash([3, 3], 0);
+  doc.rect(marginX, photoY, pageWidth - 2 * marginX, photoHeight, "S");
+  (doc as any).setLineDash([] as any, 0);
+
+  doc.setFont("Roboto", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(107, 114, 128);
+  doc.text(
+    "GÖRSEL ALANI",
+    pageWidth / 2,
+    photoY + photoHeight / 2 + 3,
+    { align: "center" }
+  );
+
+  // ---- HEADER & FOOTER TÜM SAYFALARA UYGULA ----
+  const totalPages = doc.getNumberOfPages();
+
+  for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
+    doc.setPage(pageNumber);
+    drawHeader(pageNumber, totalPages);
+    drawFooter(pageNumber, totalPages);
+  }
 
   return doc;
 };
