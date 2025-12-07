@@ -14,6 +14,8 @@ import { EmailPreviewModal } from "./components/EmailPreviewModal";
 import { WhatsAppPreviewModal } from "./components/WhatsAppPreviewModal";
 import { CustomerSelectionModal } from "./components/CustomerSelectionModal";
 import { CustomerProfile } from "./types";
+import { RecentQuotationsPanel } from "./components/RecentQuotationsPanel";
+
 
 const TeklifPage = () => {
   const { toast } = useToast();
@@ -327,6 +329,8 @@ const TeklifPage = () => {
             setShowCustomerModal(true);
           }}
         />
+        <RecentQuotationsPanel />
+
 
         {/* Product Table */}
         <ProductTableSection

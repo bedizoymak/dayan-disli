@@ -41,10 +41,5 @@ export const DOVIZ_OPTIONS = [
   { value: "EUR", label: "€ EUR", symbol: "€" },
 ];
 
-// Static conversion rates (TRY as base)
-export const EXCHANGE_RATES: Record<string, number> = {
-  TRY: 1,
-  USD: 34.50,
-  EUR: 37.00,
-};
+
 
