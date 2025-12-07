@@ -404,30 +404,47 @@ export const createQuotationPDF = (
   doc.setFillColor(249, 250, 251);
   doc.roundedRect(marginX, cardY, termsCardWidth, termsCardHeight, 2, 2, "FD");
 
-  // Başlık
-  doc.setFont("Roboto", "bold")
-    .setFontSize(9)
+    // Başlık
+    doc.setFont("Roboto", "bold")
+    .setFontSize(11)
     .setTextColor(31, 41, 55);
-  doc.text("Teklif Şartları", marginX + padX2, cardY + padY2 + 3);
 
-  // İçerik
-  let ty = cardY + padY2 + titleH;
+  const termsTitle = "TEKLİF ŞARTLARI";
+
+  // Kartın ortasına hizalamak için X
+  const titleY = cardY + padY2 + 5;          // kart üstünden biraz boşluk
+  const titleCenterX = marginX + termsCardWidth / 2;
+
+  doc.text(termsTitle, titleCenterX, titleY, { align: "center" });
+
+  // İçerik (başlıktan sonra güvenli boşluk)
+  let ty = titleY + 6;                       // 6mm aşağıdan başlasın
 
   termsLabeled.forEach(([label, value]) => {
-    doc.setFont("Roboto", "bold").setTextColor(107, 114, 128);
-    doc.text(label, marginX + padX2, ty);
+    doc.setFont("Roboto", "bold")
+   .setFontSize(9) // 📌 etiket boyutu sabitlendi
+   .setTextColor(80, 90, 100); // koyu gri, daha okunaklı
 
-    doc.setFont("Roboto", "normal").setTextColor(55, 65, 81);
-    const wrapped = doc.splitTextToSize(
-      value,
-      termsCardWidth - padX2 * 2 - 32
-    );
+doc.text(label, marginX + padX2, ty);
+
+doc.setFont("Roboto", "normal")
+.setFontSize(8) // 📌 içerik fontu sabit
+.setTextColor(55, 65, 81);
+
+
+const wrapped = doc.splitTextToSize(
+  value,
+  termsCardWidth - padX2 * 2 - 32
+);
+
+
     wrapped.forEach((line, i) =>
-      doc.text(line, marginX + padX2 + 30, ty + i * lineH)
+      doc.text(line, marginX + padX2 + 40, ty + i * lineH)
     );
 
     ty += wrapped.length * lineH;
   });
+
 
   // ===================================================================
   // HEADER & FOOTER TÜM SAYFALARA UYGULA
