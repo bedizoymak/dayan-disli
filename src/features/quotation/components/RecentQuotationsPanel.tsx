@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronDown, FileText, Loader2, Download } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { createQuotationPDF } from "../pdf/createQuotationPDF";
 import { ProductRow } from "../types";
 
 interface QuotationRecord {
@@ -28,9 +27,10 @@ interface QuotationRecord {
 
 interface RecentQuotationsPanelProps {
   onPanelOpen?: () => void;
+  onDownload?: (teklifNo: string) => void;
 }
 
-export function RecentQuotationsPanel({ onPanelOpen }: RecentQuotationsPanelProps) {
+export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotationsPanelProps) {
   const { toast } = useToast();
   const [panelOpen, setPanelOpen] = useState(false);
   const [recentQuotes, setRecentQuotes] = useState<QuotationRecord[]>([]);
@@ -71,81 +71,15 @@ export function RecentQuotationsPanel({ onPanelOpen }: RecentQuotationsPanelProp
     }
   };
 
-  // Recreate PDF from quotation data
+  // Handle download via parent callback
   const handleRecreatePDF = async (teklifNo: string) => {
-    setRecreatingId(teklifNo);
+    if (!onDownload) return;
     
+    setRecreatingId(teklifNo);
     try {
-      // Find the quotation in local state first
-      let quotation = recentQuotes.find(q => q.teklif_no === teklifNo);
-      
-      // If not found, fetch from DB
-      if (!quotation) {
-        const { data, error } = await supabase
-          .from("quotations" as any)
-          .select("*")
-          .eq("teklif_no", teklifNo)
-          .single();
-
-        if (error) throw error;
-        quotation = data as QuotationRecord;
-      }
-
-      if (!quotation) {
-        throw new Error("Teklif bulunamadı");
-      }
-
-      // Recreate form data structure
-      const formData = {
-        firma: quotation.firma,
-        ilgiliKisi: quotation.ilgili_kisi,
-        tel: quotation.tel || "",
-        email: quotation.email || "",
-        konu: quotation.konu || "",
-        products: quotation.products,
-        activeCurrency: quotation.active_currency,
-        notlar: quotation.notlar || "",
-        opsiyon: quotation.opsiyon || "",
-        teslimSuresi: quotation.teslim_suresi || "",
-        odemeSekli: quotation.odeme_sekli || "",
-        teslimYeri: quotation.teslim_yeri || "",
-      };
-
-      // Calculate functions based on stored data
-      const calculateRowTotal = (row: ProductRow) => row.miktar * row.birimFiyat;
-      const calculateSubtotal = () => quotation!.products.reduce((sum, p) => sum + calculateRowTotal(p), 0);
-      const calculateKDV = () => calculateSubtotal() * 0.20;
-      const calculateTotal = () => calculateSubtotal() + calculateKDV();
-      
-      const formatCurrency = (amount: number, currency = quotation!.active_currency) => {
-        const symbols: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€" };
-        return `${symbols[currency] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      };
-
-      // Generate and download PDF
-      const doc = await createQuotationPDF(
-        teklifNo,
-        formData,
-        calculateRowTotal,
-        calculateSubtotal,
-        calculateKDV,
-        calculateTotal,
-        formatCurrency
-      );
-      
-      doc.save(`${teklifNo}.pdf`);
-
-      toast({
-        title: "PDF Yeniden Oluşturuldu",
-        description: `${teklifNo} başarıyla indirildi.`,
-      });
+      await onDownload(teklifNo);
     } catch (error) {
-      console.error("PDF recreation error:", error);
-      toast({
-        title: "Hata",
-        description: "PDF oluşturulamadı.",
-        variant: "destructive",
-      });
+      // Error already handled in parent
     } finally {
       setRecreatingId(null);
     }
@@ -226,16 +160,9 @@ export function RecentQuotationsPanel({ onPanelOpen }: RecentQuotationsPanelProp
                       className="hover:bg-slate-700/20 transition-colors"
                     >
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleRecreatePDF(quote.teklif_no)}
-                          disabled={recreatingId === quote.teklif_no}
-                          className="text-blue-400 hover:text-blue-300 hover:underline font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                          {recreatingId === quote.teklif_no ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : null}
+                        <span className="text-blue-400 font-medium">
                           {quote.teklif_no}
-                        </button>
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-slate-300 text-sm">
                         {quote.firma}
@@ -246,7 +173,7 @@ export function RecentQuotationsPanel({ onPanelOpen }: RecentQuotationsPanelProp
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => handleRecreatePDF(quote.teklif_no)}
-                          disabled={recreatingId === quote.teklif_no}
+                          disabled={!onDownload || recreatingId === quote.teklif_no}
                           className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {recreatingId === quote.teklif_no ? (

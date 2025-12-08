@@ -15,7 +15,6 @@ import { WhatsAppPreviewModal } from "./components/WhatsAppPreviewModal";
 import { CustomerSelectionModal } from "./components/CustomerSelectionModal";
 import { CustomerProfile } from "./types";
 import { RecentQuotationsPanel } from "./components/RecentQuotationsPanel";
-import { PreviousQuotationsDrawer } from "./components/PreviousQuotationsDrawer";
 
 
 
@@ -299,6 +298,35 @@ const TeklifPage = () => {
     }
   };
 
+  // Recent Quotation Download Handler
+  const handleRecentQuotationDownload = async (teklifNo: string) => {
+    try {
+      await form.loadQuotationByNo(teklifNo);
+
+      await pdf.generatePDF(
+        teklifNo,
+        getFormData(),
+        form.calculateRowTotal,
+        form.calculateSubtotal,
+        form.calculateKDV,
+        form.calculateTotal,
+        form.formatCurrency
+      );
+
+      toast({
+        title: "PDF Downloaded",
+        description: `${teklifNo} generated successfully.`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: "Failed to download the quotation!",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -362,28 +390,7 @@ const TeklifPage = () => {
           }}
         />
 
-<PreviousQuotationsDrawer
-  onSelect={async (teklifNo) => {
-    try {
-      await form.loadQuotationByNo(teklifNo);
-      await pdf.generatePDF(
-        teklifNo,
-        getFormData(),
-        form.calculateRowTotal,
-        form.calculateSubtotal,
-        form.calculateKDV,
-        form.calculateTotal,
-        form.formatCurrency
-      );
-      toast({ title: "PDF Oluşturuldu", description: "Teklif başarıyla yüklendi." });
-    } catch {
-      toast({ title: "Hata", description: "Teklif yüklenemedi.", variant: "destructive" });
-    }
-  }}
-/>
-
-
-        <RecentQuotationsPanel />
+        <RecentQuotationsPanel onDownload={handleRecentQuotationDownload} />
 
 
         {/* Product Table */}
