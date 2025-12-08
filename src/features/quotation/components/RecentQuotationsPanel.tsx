@@ -302,7 +302,8 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
               <div className="px-4 py-3 border-t border-slate-700/50 flex justify-center">
                 <button
                   onClick={handleLoadMore}
-                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors"
+                  disabled={visibleCount >= filteredQuotes.length}
+                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50"
                 >
                   Daha Fazla Göster
                 </button>
