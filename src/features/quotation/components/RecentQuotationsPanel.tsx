@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown, FileText, Loader2, Download } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ChevronDown, FileText, Loader2, Download, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { ProductRow } from "../types";
@@ -12,7 +12,7 @@ interface QuotationRecord {
   tel: string;
   email: string;
   konu: string;
-  products: ProductRow[];
+  products: string | ProductRow[];
   active_currency: string;
   notlar: string;
   opsiyon: string;
@@ -27,7 +27,7 @@ interface QuotationRecord {
 
 interface RecentQuotationsPanelProps {
   onPanelOpen?: () => void;
-  onDownload?: (teklifNo: string) => void;
+  onDownload?: (quotation: QuotationRecord) => void;
 }
 
 export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotationsPanelProps) {
@@ -36,6 +36,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
   const [recentQuotes, setRecentQuotes] = useState<QuotationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [recreatingId, setRecreatingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch recent quotations when panel opens
   const fetchRecentQuotes = async () => {
@@ -72,18 +73,28 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
   };
 
   // Handle download via parent callback
-  const handleRecreatePDF = async (teklifNo: string) => {
+  const handleRecreatePDF = async (quote: QuotationRecord) => {
     if (!onDownload) return;
     
-    setRecreatingId(teklifNo);
+    setRecreatingId(quote.teklif_no);
     try {
-      await onDownload(teklifNo);
+      await onDownload(quote);
     } catch (error) {
       // Error already handled in parent
     } finally {
       setRecreatingId(null);
     }
   };
+
+  // Filter quotations by firma name
+  const filteredQuotes = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return recentQuotes;
+    }
+    return recentQuotes.filter(q => 
+      q.firma?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [recentQuotes, searchTerm]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -135,26 +146,47 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
               Henüz kayıtlı teklif bulunmuyor.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-700/50 bg-slate-900/50">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                      Teklif No
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                      Firma
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                      Oluşturma Tarihi
-                    </th>
-                    <th className="text-center px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                      İndir
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700/30">
-                  {recentQuotes.map((quote) => (
+            <>
+              {/* Search Bar */}
+              <div className="px-4 py-3 border-b border-slate-700/50">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Firma adı ile ara..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-slate-900/50 border border-slate-700/50 rounded-md text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-colors"
+                  />
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-700/50 bg-slate-900/50">
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        Teklif No
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        Firma
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        Oluşturma Tarihi
+                      </th>
+                      <th className="text-center px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+                        İndir
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/30">
+                    {filteredQuotes.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="text-center py-8 text-slate-500">
+                          Arama sonucu bulunamadı.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredQuotes.map((quote) => (
                     <tr 
                       key={quote.id}
                       className="hover:bg-slate-700/20 transition-colors"
@@ -172,7 +204,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
-                          onClick={() => handleRecreatePDF(quote.teklif_no)}
+                          onClick={() => handleRecreatePDF(quote)}
                           disabled={!onDownload || recreatingId === quote.teklif_no}
                           className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -184,10 +216,12 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
                         </button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

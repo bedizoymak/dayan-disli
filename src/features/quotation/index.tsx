@@ -13,7 +13,7 @@ import { ActionButtons } from "./components/ActionButtons";
 import { EmailPreviewModal } from "./components/EmailPreviewModal";
 import { WhatsAppPreviewModal } from "./components/WhatsAppPreviewModal";
 import { CustomerSelectionModal } from "./components/CustomerSelectionModal";
-import { CustomerProfile } from "./types";
+import { CustomerProfile, ProductRow } from "./types";
 import { RecentQuotationsPanel } from "./components/RecentQuotationsPanel";
 
 
@@ -299,23 +299,66 @@ const TeklifPage = () => {
   };
 
   // Recent Quotation Download Handler
-  const handleRecentQuotationDownload = async (teklifNo: string) => {
+  const handleRecentQuotationDownload = async (quotation: {
+    teklif_no: string;
+    firma: string;
+    ilgili_kisi: string;
+    tel: string;
+    email: string;
+    konu: string;
+    products: string | ProductRow[];
+    active_currency: string;
+    notlar: string;
+    opsiyon: string;
+    teslim_suresi: string;
+    odeme_sekli: string;
+    teslim_yeri: string;
+  }) => {
     try {
-      await form.loadQuotationByNo(teklifNo);
+      // Parse products if it's a string
+      const products = typeof quotation.products === 'string' 
+        ? JSON.parse(quotation.products) 
+        : quotation.products;
+
+      // Convert quotation to QuotationFormData format
+      const quotationFormData = {
+        firma: quotation.firma,
+        ilgiliKisi: quotation.ilgili_kisi,
+        tel: quotation.tel,
+        email: quotation.email,
+        konu: quotation.konu,
+        products: products,
+        activeCurrency: quotation.active_currency,
+        notlar: quotation.notlar,
+        opsiyon: quotation.opsiyon,
+        teslimSuresi: quotation.teslim_suresi,
+        odemeSekli: quotation.odeme_sekli,
+        teslimYeri: quotation.teslim_yeri,
+      };
+
+      // Create calculation functions based on quotation's products
+      const calculateRowTotal = (row: ProductRow) => row.miktar * row.birimFiyat;
+      const calculateSubtotal = () => products.reduce((sum: number, p: ProductRow) => sum + calculateRowTotal(p), 0);
+      const calculateKDV = () => calculateSubtotal() * 0.20;
+      const calculateTotal = () => calculateSubtotal() + calculateKDV();
+      const formatCurrency = (amount: number, currency = quotation.active_currency) => {
+        const symbols: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€" };
+        return `${symbols[currency] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      };
 
       await pdf.generatePDF(
-        teklifNo,
-        getFormData(),
-        form.calculateRowTotal,
-        form.calculateSubtotal,
-        form.calculateKDV,
-        form.calculateTotal,
-        form.formatCurrency
+        quotation.teklif_no,
+        quotationFormData,
+        calculateRowTotal,
+        calculateSubtotal,
+        calculateKDV,
+        calculateTotal,
+        formatCurrency
       );
 
       toast({
         title: "PDF Downloaded",
-        description: `${teklifNo} generated successfully.`,
+        description: `${quotation.teklif_no} generated successfully.`,
       });
     } catch (error) {
       console.error(error);
