@@ -19,7 +19,14 @@ import TeklifSayfasi from "./features/quotation";
 import { CalculatorRoutes } from "./calculator";
 
 // Shop pages
-import { ShopPage, ProductDetailPage, CartPage, CheckoutPage, CheckoutSuccessPage } from "./features/shop";
+import { 
+  ShopPage, 
+  ProductDetailPage, 
+  CartPage, 
+  CheckoutPage, 
+  CheckoutSuccessPage,
+  ShopOrdersPage
+} from "./features/shop";
 
 const queryClient = new QueryClient();
 
@@ -45,7 +52,7 @@ const App = () => (
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
 
-              {/* 🔒 Tüm diğer rotalar otomatik private */}
+              {/* 🔒 Protected Routes */}
               <Route
                 path="/*"
                 element={
@@ -53,10 +60,9 @@ const App = () => (
                     <Routes>
                       <Route path="apps" element={<Apps />} />
                       <Route path="apps/calculator/*" element={<CalculatorRoutes />} />
+                      <Route path="apps/shop-orders" element={<ShopOrdersPage />} />
                       <Route path="kargo" element={<Kargo />} />
                       <Route path="teklif-sayfasi" element={<TeklifSayfasi />} />
-
-                      {/* Yeni private sayfa eklersen sadece buraya eklemen yeterli */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </ProtectedRoute>

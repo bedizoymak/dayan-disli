@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Package, FileText } from "lucide-react";
+import { Package, FileText, Calculator, ShoppingBag } from "lucide-react";
 
 const apps = [
   {
@@ -20,10 +20,15 @@ const apps = [
     title: "DAYAN Calculator",
     description: "Dişli hesaplama ve üretim reçetesi oluşturma",
     route: "/apps/calculator",
-    icon: FileText,
+    icon: Calculator,
+  },
+  {
+    title: "Sipariş Yönetimi",
+    description: "E-ticaret siparişlerini görüntüleyin ve yönetin",
+    route: "/apps/shop-orders",
+    icon: ShoppingBag,
   },
 ];
-
 
 export default function Apps() {
   const navigate = useNavigate();
