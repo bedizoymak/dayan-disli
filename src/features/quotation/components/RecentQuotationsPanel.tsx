@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ChevronDown, FileText, Loader2, Download, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
   const [isLoading, setIsLoading] = useState(false);
   const [recreatingId, setRecreatingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [visibleCount, setVisibleCount] = useState(5);
 
   // Fetch recent quotations when panel opens
   const fetchRecentQuotes = async () => {
@@ -68,8 +69,14 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
     setPanelOpen(newState);
     if (newState) {
       fetchRecentQuotes();
+      setVisibleCount(5); // Reset to initial count when opening
       onPanelOpen?.();
     }
+  };
+
+  // Load more quotations
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 5);
   };
 
   // Handle download via parent callback
@@ -95,6 +102,20 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
       q.firma?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [recentQuotes, searchTerm]);
+
+  // Reset visible count when search term changes
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [searchTerm]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+  };
+
+  // Get visible quotes based on current count
+  const visibleQuotes = useMemo(() => {
+    return filteredQuotes.slice(0, visibleCount);
+  }, [filteredQuotes, visibleCount]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -155,7 +176,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
                     type="text"
                     placeholder="Firma adı ile ara..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 bg-slate-900/50 border border-slate-700/50 rounded-md text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-colors"
                   />
                 </div>
@@ -186,7 +207,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
                         </td>
                       </tr>
                     ) : (
-                      filteredQuotes.map((quote) => (
+                      visibleQuotes.map((quote) => (
                     <tr 
                       key={quote.id}
                       className="hover:bg-slate-700/20 transition-colors"
@@ -221,6 +242,17 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
                   </tbody>
                 </table>
               </div>
+              {/* Load More Button */}
+              {filteredQuotes.length > visibleCount && (
+                <div className="px-4 py-3 border-t border-slate-700/50 flex justify-center">
+                  <button
+                    onClick={handleLoadMore}
+                    className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors"
+                  >
+                    Daha Fazla Göster
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
