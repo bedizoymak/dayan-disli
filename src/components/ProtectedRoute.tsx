@@ -6,6 +6,10 @@ type ProtectedRouteProps = {
   children: React.ReactNode;
 };
 
+interface SettingsRow {
+  auth_enabled: boolean;
+}
+
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,10 +22,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
       // 1️⃣ Güvenlik ayarı oku
       const { data: settingsData, error: settingsError } = await supabase
-        .from("settings")
+        .from("settings" as never)
         .select("auth_enabled")
-        .eq("id", 1)
-        .maybeSingle();
+        .eq("id", "1")
+        .maybeSingle() as { data: SettingsRow | null; error: unknown };
 
       if (settingsError) {
         console.error("Settings error:", settingsError);
@@ -47,9 +51,9 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
       // 3️⃣ Whitelist kontrolü
       const { data: allow, error: wlError } = await supabase.rpc(
-        "is_email_allowed",
-        { check_email: session.user.email } as { check_email: string }
-      );
+        "is_email_allowed" as never,
+        { check_email: session.user.email } as never
+      ) as { data: boolean | null; error: unknown };
 
       if (wlError) {
         console.error("Whitelist kontrol hatası:", wlError);

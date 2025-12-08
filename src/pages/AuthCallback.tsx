@@ -21,9 +21,10 @@ export default function AuthCallback() {
         return;
       }
 
-      const { data } = await supabase.rpc("is_email_allowed", {
-        check_email: session.user.email,
-      } as { check_email: string });
+      const { data } = await supabase.rpc(
+        "is_email_allowed" as never,
+        { check_email: session.user.email } as never
+      ) as { data: boolean | null };
 
       if (data !== true) {
         toast({
