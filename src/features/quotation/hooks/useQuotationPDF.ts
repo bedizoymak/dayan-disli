@@ -34,7 +34,8 @@ export function useQuotationPDF() {
     calculateSubtotal: () => number,
     calculateKDV: () => number,
     calculateTotal: () => number,
-    formatCurrencyFn: (amount: number, currency?: string) => string
+    formatCurrencyFn: (amount: number, currency?: string) => string,
+    issueDate?: Date | string
   ) => {
     if (!formData.firma || !formData.ilgiliKisi) {
       toast({
@@ -48,7 +49,7 @@ export function useQuotationPDF() {
     setIsGenerating(true);
 
     try {
-      const doc = await createQuotationPDF(teklifNo, formData, calculateRowTotal, calculateSubtotal, calculateKDV, calculateTotal, formatCurrencyFn);
+      const doc = await createQuotationPDF(teklifNo, formData, calculateRowTotal, calculateSubtotal, calculateKDV, calculateTotal, formatCurrencyFn, issueDate);
       doc.save(teklifNo + ".pdf");
 
       toast({
@@ -76,12 +77,13 @@ export function useQuotationPDF() {
     calculateSubtotal: () => number,
     calculateKDV: () => number,
     calculateTotal: () => number,
-    formatCurrencyFn: (amount: number, currency?: string) => string
+    formatCurrencyFn: (amount: number, currency?: string) => string,
+    issueDate?: Date | string
   ): Promise<Blob> => {
     setIsGenerating(true);
 
     try {
-      const doc = await createQuotationPDF(teklifNo, formData, calculateRowTotal, calculateSubtotal, calculateKDV, calculateTotal, formatCurrencyFn);
+      const doc = await createQuotationPDF(teklifNo, formData, calculateRowTotal, calculateSubtotal, calculateKDV, calculateTotal, formatCurrencyFn, issueDate);
       const pdfOutput = doc.output("blob");
       setPdfBlob(pdfOutput);
 

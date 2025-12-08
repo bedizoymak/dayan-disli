@@ -313,12 +313,21 @@ const TeklifPage = () => {
     teslim_suresi: string;
     odeme_sekli: string;
     teslim_yeri: string;
+    created_at?: string;
+    updated_at?: string;
   }) => {
     try {
       // Parse products if it's a string
       const products = typeof quotation.products === 'string' 
         ? JSON.parse(quotation.products) 
         : quotation.products;
+
+      // Extract issue date: use created_at, fallback to updated_at, else current date
+      const issueDate = quotation.created_at 
+        ? new Date(quotation.created_at)
+        : quotation.updated_at 
+        ? new Date(quotation.updated_at)
+        : new Date();
 
       // Convert quotation to QuotationFormData format
       const quotationFormData = {
@@ -353,7 +362,8 @@ const TeklifPage = () => {
         calculateSubtotal,
         calculateKDV,
         calculateTotal,
-        formatCurrency
+        formatCurrency,
+        issueDate
       );
 
       toast({

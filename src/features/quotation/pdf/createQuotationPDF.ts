@@ -10,13 +10,16 @@ export const createQuotationPDF = (
   calculateSubtotal: () => number,
   calculateKDV: () => number,
   calculateTotal: () => number,
-  formatCurrencyFn: (amount: number, currency?: string) => string
+  formatCurrencyFn: (amount: number, currency?: string) => string,
+  issueDate?: Date | string
 ) => {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginX = 12;
-  const today = new Date().toLocaleDateString("tr-TR");
+  const dateToUse = issueDate 
+    ? (typeof issueDate === 'string' ? new Date(issueDate) : issueDate).toLocaleDateString("tr-TR")
+    : new Date().toLocaleDateString("tr-TR");
 
   // ---- Fonts ----
   doc.addFileToVFS("Roboto-Regular.ttf", fontRobotoRegular);
@@ -64,7 +67,7 @@ export const createQuotationPDF = (
     const documentNo = `D ${teklifSuffix}-1`;
 
     const labelDate = "Tarih: ";
-    const valueDate = today;
+    const valueDate = dateToUse;
 
     const labelDoc = "Dosya No: ";
     const valueDoc = documentNo;
