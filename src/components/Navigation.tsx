@@ -1,13 +1,16 @@
-import { Menu } from "lucide-react";
+import { Menu, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { Link } from "react-router-dom";
+import { useCart } from "@/features/shop/CartContext";
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useLanguage();
+  const { itemCount } = useCart();
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -32,7 +35,6 @@ export const Navigation = () => {
               alt="Dayan Dişli"
               className="h-14 w-auto object-contain"
             />
-            
           </button>
 
           {/* Desktop Navigation */}
@@ -72,7 +74,27 @@ export const Navigation = () => {
               {t.nav.sectors}
             </button>
 
+            {/* Shop Link */}
+            <Link
+              to="/shop"
+              className="text-foreground hover:text-primary transition-colors"
+            >
+              Mağaza
+            </Link>
+
             <LanguageSelector />
+
+            {/* Cart Icon */}
+            <Link to="/cart" className="relative">
+              <Button variant="ghost" size="icon">
+                <ShoppingCart className="h-5 w-5" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
 
             <Button
               onClick={() => scrollToSection("contact")}
@@ -82,8 +104,19 @@ export const Navigation = () => {
             </Button>
           </div>
 
-          {/* MOBILE: Hamburger + Dil Seçici */}
-          <div className="md:hidden flex items-center gap-0">
+          {/* MOBILE: Hamburger + Cart + Dil Seçici */}
+          <div className="md:hidden flex items-center gap-2">
+            {/* Cart Icon Mobile */}
+            <Link to="/cart" className="relative">
+              <Button variant="ghost" size="icon">
+                <ShoppingCart className="h-5 w-5" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs w-4 h-4 rounded-full flex items-center justify-center text-[10px]">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
 
             {/* Hamburger */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -135,6 +168,14 @@ export const Navigation = () => {
                   >
                     {t.nav.sectors}
                   </button>
+
+                  <Link
+                    to="/shop"
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg text-foreground hover:text-primary transition-colors text-left"
+                  >
+                    Mağaza
+                  </Link>
 
                   <Button
                     onClick={() => scrollToSection("contact-form")}
