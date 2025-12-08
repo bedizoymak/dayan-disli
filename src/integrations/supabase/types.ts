@@ -4,101 +4,217 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5";
-  };
-
+    PostgrestVersion: "13.0.5"
+  }
   public: {
     Tables: {
       quotations: {
         Row: {
-          id: string;
-          teklif_no: string;
-          firma: string;
-          ilgili_kisi: string;
-          tel: string | null;
-          email: string | null;
-          konu: string | null;
-          products: Json;
-          active_currency: string;
-          notlar: string | null;
-          opsiyon: string | null;
-          teslim_suresi: string | null;
-          odeme_sekli: string | null;
-          teslim_yeri: string | null;
-          subtotal: number | null;
-          kdv: number | null;
-          total: number | null;
-          created_at: string;
-        };
+          active_currency: string
+          created_at: string
+          email: string | null
+          firma: string
+          id: string
+          ilgili_kisi: string
+          kdv: number
+          konu: string | null
+          notlar: string | null
+          odeme_sekli: string | null
+          opsiyon: string | null
+          products: Json
+          subtotal: number
+          teklif_no: string
+          tel: string | null
+          teslim_suresi: string | null
+          teslim_yeri: string | null
+          total: number
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          teklif_no: string;
-          firma: string;
-          ilgili_kisi: string;
-          tel?: string | null;
-          email?: string | null;
-          konu?: string | null;
-          products: Json;
-          active_currency: string;
-          notlar?: string | null;
-          opsiyon?: string | null;
-          teslim_suresi?: string | null;
-          odeme_sekli?: string | null;
-          teslim_yeri?: string | null;
-          subtotal?: number | null;
-          kdv?: number | null;
-          total?: number | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["quotations"]["Insert"]>;
-      };
-    };
-
+          active_currency?: string
+          created_at?: string
+          email?: string | null
+          firma: string
+          id?: string
+          ilgili_kisi: string
+          kdv?: number
+          konu?: string | null
+          notlar?: string | null
+          odeme_sekli?: string | null
+          opsiyon?: string | null
+          products?: Json
+          subtotal?: number
+          teklif_no: string
+          tel?: string | null
+          teslim_suresi?: string | null
+          teslim_yeri?: string | null
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          active_currency?: string
+          created_at?: string
+          email?: string | null
+          firma?: string
+          id?: string
+          ilgili_kisi?: string
+          kdv?: number
+          konu?: string | null
+          notlar?: string | null
+          odeme_sekli?: string | null
+          opsiyon?: string | null
+          products?: Json
+          subtotal?: number
+          teklif_no?: string
+          tel?: string | null
+          teslim_suresi?: string | null
+          teslim_yeri?: string | null
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
-
+      [_ in never]: never
+    }
     Functions: {
-      [_ in never]: never;
-    };
-
+      [_ in never]: never
+    }
     Enums: {
-      [_ in never]: never;
-    };
-
+      [_ in never]: never
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+  }
+}
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
-type DefaultSchema = DatabaseWithoutInternals["public"];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-> = (DefaultSchema["Tables"] & DefaultSchema["Views"])[T] extends {
-  Row: infer R;
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
-  ? R
-  : never;
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
-  T extends keyof DefaultSchema["Tables"]
-> = DefaultSchema["Tables"][T] extends {
-  Insert: infer I;
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
-  ? I
-  : never;
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
-  T extends keyof DefaultSchema["Tables"]
-> = DefaultSchema["Tables"][T] extends {
-  Update: infer U;
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
-  ? U
-  : never;
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

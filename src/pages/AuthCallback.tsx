@@ -23,7 +23,7 @@ export default function AuthCallback() {
 
       const { data } = await supabase.rpc("is_email_allowed", {
         check_email: session.user.email,
-      });
+      } as { check_email: string });
 
       if (data !== true) {
         toast({
@@ -37,7 +37,6 @@ export default function AuthCallback() {
       }
 
       const redirectPath = "/apps";
-
 
       localStorage.removeItem("auth_redirect_path");
 
