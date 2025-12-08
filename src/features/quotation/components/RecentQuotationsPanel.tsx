@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ChevronDown, FileText, Loader2, Download, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +38,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
   const [recreatingId, setRecreatingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [visibleCount, setVisibleCount] = useState(5);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Fetch recent quotations when panel opens
   const fetchRecentQuotes = async () => {
@@ -63,6 +64,12 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
     }
   };
 
+  // Close panel and reset
+  const closePanel = () => {
+    setPanelOpen(false);
+    setVisibleCount(5);
+  };
+
   // Toggle panel
   const handleTogglePanel = () => {
     const newState = !panelOpen;
@@ -71,13 +78,34 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
       fetchRecentQuotes();
       setVisibleCount(5); // Reset to initial count when opening
       onPanelOpen?.();
+    } else {
+      setVisibleCount(5); // Reset when closing
     }
   };
 
   // Load more quotations
   const handleLoadMore = () => {
-    setVisibleCount(prev => prev + 5);
+    if (visibleCount < filteredQuotes.length) {
+      setVisibleCount(prev => Math.min(prev + 5, filteredQuotes.length));
+    }
   };
+
+  // Handle outside click to close panel
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelOpen && panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        closePanel();
+      }
+    };
+
+    if (panelOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [panelOpen]);
 
   // Handle download via parent callback
   const handleRecreatePDF = async (quote: QuotationRecord) => {
@@ -130,7 +158,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
   };
 
   return (
-    <div className="mt-6 mb-6">
+    <div ref={panelRef} className="mt-6 mb-6">
       {/* Collapsible Header */}
       <button
         onClick={handleTogglePanel}
@@ -139,9 +167,9 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
         <div className="flex items-center gap-2 text-slate-300">
           <FileText className="w-5 h-5 text-blue-400" />
           <span className="font-medium">Son Teklifler</span>
-          {recentQuotes.length > 0 && (
+          {filteredQuotes.length > 0 && (
             <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
-              {recentQuotes.length}
+              {filteredQuotes.length}
             </span>
           )}
         </div>
@@ -243,16 +271,15 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
                 </table>
               </div>
               {/* Load More Button */}
-              {filteredQuotes.length > visibleCount && (
-                <div className="px-4 py-3 border-t border-slate-700/50 flex justify-center">
-                  <button
-                    onClick={handleLoadMore}
-                    className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors"
-                  >
-                    Daha Fazla Göster
-                  </button>
-                </div>
-              )}
+              <div className="px-4 py-3 border-t border-slate-700/50 flex justify-center">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={visibleCount >= filteredQuotes.length}
+                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50"
+                >
+                  Daha Fazla Göster
+                </button>
+              </div>
             </>
           )}
         </div>
