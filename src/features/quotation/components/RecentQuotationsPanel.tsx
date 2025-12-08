@@ -85,9 +85,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
 
   // Load more quotations
   const handleLoadMore = () => {
-    if (visibleCount < filteredQuotes.length) {
-      setVisibleCount(prev => Math.min(prev + 5, filteredQuotes.length));
-    }
+    setVisibleCount(prev => Math.min(prev + 5, filteredQuotes.length));
   };
 
   // Handle outside click to close panel
@@ -274,8 +272,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
               <div className="px-4 py-3 border-t border-slate-700/50 flex justify-center">
                 <button
                   onClick={handleLoadMore}
-                  disabled={visibleCount >= filteredQuotes.length}
-                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50"
+                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors"
                 >
                   Daha Fazla Göster
                 </button>
