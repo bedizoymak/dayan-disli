@@ -76,12 +76,15 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const handleTogglePanel = () => {
     const newState = !panelOpen;
     setPanelOpen(newState);
+
     if (newState) {
-      fetchRecentQuotes();
-      setVisibleCount(5); // Reset to initial count when opening
+      if (recentQuotes.length === 0) {
+        fetchRecentQuotes();
+      }
+      setVisibleCount(5);
       onPanelOpen?.();
     } else {
-      setVisibleCount(5); // Reset when closing
+      setVisibleCount(5);
     }
   };
 
@@ -93,17 +96,20 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   // Handle outside click to close panel
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (panelOpen && panelRef.current && !panelRef.current.contains(event.target as Node)) {
+      if (!panelOpen) return;
+
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(event.target as Node) &&
+        !(event.target as HTMLElement).closest(".load-more-btn")
+      ) {
         closePanel();
       }
     };
 
-    if (panelOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [panelOpen]);
 
@@ -303,7 +309,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
                 <button
                   onClick={handleLoadMore}
                   disabled={visibleCount >= filteredQuotes.length}
-                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50"
+                  className="load-more-btn px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50"
                 >
                   Daha Fazla Göster
                 </button>
