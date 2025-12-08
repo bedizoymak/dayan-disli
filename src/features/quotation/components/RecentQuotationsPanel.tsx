@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, FileText, Loader2, Download, Search } from "lucide-react";
+import { ChevronDown, FileText, Loader2, Download, Search, Eye } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { ProductRow } from "../types";
@@ -28,14 +28,16 @@ interface QuotationRecord {
 interface RecentQuotationsPanelProps {
   onPanelOpen?: () => void;
   onDownload?: (quotation: QuotationRecord) => void;
+  onPreview?: (quotation: QuotationRecord) => void;
 }
 
-export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotationsPanelProps) {
+export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: RecentQuotationsPanelProps) {
   const { toast } = useToast();
   const [panelOpen, setPanelOpen] = useState(false);
   const [recentQuotes, setRecentQuotes] = useState<QuotationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [recreatingId, setRecreatingId] = useState<string | null>(null);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [visibleCount, setVisibleCount] = useState(5);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -116,6 +118,20 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
       // Error already handled in parent
     } finally {
       setRecreatingId(null);
+    }
+  };
+
+  // Handle preview via parent callback
+  const handlePreviewPDF = async (quote: QuotationRecord) => {
+    if (!onPreview) return;
+    
+    setPreviewingId(quote.teklif_no);
+    try {
+      await onPreview(quote);
+    } catch (error) {
+      // Error already handled in parent
+    } finally {
+      setPreviewingId(null);
     }
   };
 
@@ -250,17 +266,31 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
                         {formatDate(quote.created_at)}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => handleRecreatePDF(quote)}
-                          disabled={!onDownload || recreatingId === quote.teklif_no}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {recreatingId === quote.teklif_no ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Download className="w-4 h-4" />
-                          )}
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handlePreviewPDF(quote)}
+                            disabled={!onPreview || previewingId === quote.teklif_no}
+                            title="Ön İzleme"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {previewingId === quote.teklif_no ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleRecreatePDF(quote)}
+                            disabled={!onDownload || recreatingId === quote.teklif_no}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {recreatingId === quote.teklif_no ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                       ))
