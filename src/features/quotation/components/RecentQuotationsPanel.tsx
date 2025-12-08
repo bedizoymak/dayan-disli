@@ -48,7 +48,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
         .from("quotations" as any)
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(1000); // High limit to fetch all quotations while preventing performance issues
 
       if (error) throw error;
       setRecentQuotes((data as QuotationRecord[]) || []);
