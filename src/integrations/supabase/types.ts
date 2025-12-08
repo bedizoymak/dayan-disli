@@ -14,6 +14,224 @@ export type Database = {
   }
   public: {
     Tables: {
+      allowed_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      order_counter: {
+        Row: {
+          counter: number
+          id: number
+          year: number
+        }
+        Insert: {
+          counter?: number
+          id?: number
+          year: number
+        }
+        Update: {
+          counter?: number
+          id?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          order_id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total: number
+          order_id: string
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          order_id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          address: string
+          company_name: string | null
+          created_at: string
+          currency: string
+          customer_name: string
+          email: string
+          grand_total: number
+          id: string
+          notes: string | null
+          order_number: string
+          payment_method: string
+          phone: string
+          status: string
+          subtotal: number
+          tax_total: number
+        }
+        Insert: {
+          address: string
+          company_name?: string | null
+          created_at?: string
+          currency?: string
+          customer_name: string
+          email: string
+          grand_total: number
+          id?: string
+          notes?: string | null
+          order_number: string
+          payment_method?: string
+          phone: string
+          status?: string
+          subtotal: number
+          tax_total: number
+        }
+        Update: {
+          address?: string
+          company_name?: string | null
+          created_at?: string
+          currency?: string
+          customer_name?: string
+          email?: string
+          grand_total?: number
+          id?: string
+          notes?: string | null
+          order_number?: string
+          payment_method?: string
+          phone?: string
+          status?: string
+          subtotal?: number
+          tax_total?: number
+        }
+        Relationships: []
+      }
+      product_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_primary: boolean | null
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_primary?: boolean | null
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_primary?: boolean | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          brand: string | null
+          category: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          in_stock: boolean
+          name: string
+          price: number
+          sku: string | null
+          slug: string
+          stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          in_stock?: boolean
+          name: string
+          price: number
+          sku?: string | null
+          slug: string
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          in_stock?: boolean
+          name?: string
+          price?: number
+          sku?: string | null
+          slug?: string
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       quotations: {
         Row: {
           active_currency: string
@@ -80,12 +298,34 @@ export type Database = {
         }
         Relationships: []
       }
+      settings: {
+        Row: {
+          auth_enabled: boolean
+          created_at: string
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          auth_enabled?: boolean
+          created_at?: string
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          auth_enabled?: boolean
+          created_at?: string
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_order_number: { Args: never; Returns: string }
+      is_email_allowed: { Args: { check_email: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

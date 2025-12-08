@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { CartProvider } from "@/features/shop/CartContext";
 
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -17,43 +18,55 @@ import Kargo from "./pages/Kargo";
 import TeklifSayfasi from "./features/quotation";
 import { CalculatorRoutes } from "./calculator";
 
+// Shop pages
+import { ShopPage, ProductDetailPage, CartPage, CheckoutPage, CheckoutSuccessPage } from "./features/shop";
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
+      <CartProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
 
-            {/* 🔓 Public Routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
+              {/* 🔓 Public Routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              
+              {/* 🛒 Shop Routes (Public) */}
+              <Route path="/shop" element={<ShopPage />} />
+              <Route path="/shop/:slug" element={<ProductDetailPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
 
-            {/* 🔒 Tüm diğer rotalar otomatik private */}
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <Routes>
-                    <Route path="apps" element={<Apps />} />
-                    <Route path="apps/calculator/*" element={<CalculatorRoutes />} />
-                    <Route path="kargo" element={<Kargo />} />
-                    <Route path="teklif-sayfasi" element={<TeklifSayfasi />} />
+              {/* 🔒 Tüm diğer rotalar otomatik private */}
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <Routes>
+                      <Route path="apps" element={<Apps />} />
+                      <Route path="apps/calculator/*" element={<CalculatorRoutes />} />
+                      <Route path="kargo" element={<Kargo />} />
+                      <Route path="teklif-sayfasi" element={<TeklifSayfasi />} />
 
-                    {/* Yeni private sayfa eklersen sadece buraya eklemen yeterli */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </ProtectedRoute>
-              }
-            />
+                      {/* Yeni private sayfa eklersen sadece buraya eklemen yeterli */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </ProtectedRoute>
+                }
+              />
 
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </CartProvider>
     </LanguageProvider>
   </QueryClientProvider>
 );
