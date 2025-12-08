@@ -1,14 +1,43 @@
-// supabase/functions/send-contact-email/index.ts
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
-import nodemailer from "npm:nodemailer";
-
-// 🌍 SMTP ENV Values (Enterprise Setup)
+// SMTP configuration from environment
 const smtpUser = Deno.env.get("SMTP_USER")!;
 const smtpPass = Deno.env.get("GMAIL_APP_PASSWORD")!;
 const smtpHost = Deno.env.get("SMTP_HOST")!;
 const smtpPort = Number(Deno.env.get("SMTP_PORT")!);
 
-Deno.serve(async (req: Request) => {
+// Simple SMTP email sending via fetch to SMTP2GO or similar API
+// Alternative: Use Resend API which is already configured
+const sendEmailViaResend = async (to: string, subject: string, html: string) => {
+  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  
+  if (!RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY not configured");
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: "DAYAN Dişli <onboarding@resend.dev>",
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`Email sending failed: ${error}`);
+  }
+
+  return res.json();
+};
+
+serve(async (req: Request) => {
   const allowedOrigins = [
     "https://dayandisli.com",
     "http://localhost:8080",
@@ -60,40 +89,30 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 🚀 Gmail SMTP Transporter
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: { user: smtpUser, pass: smtpPass },
-    });
-
-    // 📥 Admin'e mesaj bildirimi
-    await transporter.sendMail({
-      from: `"DAYAN Dişli" <${smtpUser}>`,
-      to: smtpUser,
-      subject: "Yeni İletişim Formu - dayandisli.com",
-      html: `
+    // Send admin notification
+    await sendEmailViaResend(
+      smtpUser || "info@dayandisli.com",
+      "Yeni İletişim Formu - dayandisli.com",
+      `
         <h2>Yeni İletişim Formu</h2>
         <p><strong>İsim:</strong> ${name}</p>
         <p><strong>E-posta:</strong> ${email}</p>
         <p><strong>Telefon:</strong> ${phone}</p>
         <p><strong>Firma:</strong> ${company || "-"}</p>
         <p><strong>Mesaj:</strong><br>${message.replace(/\n/g, "<br>")}</p>
-      `,
-    });
+      `
+    );
 
-    // 📤 Kullanıcıya otomatik cevap
-    await transporter.sendMail({
-      from: `"DAYAN Dişli" <${smtpUser}>`,
-      to: email,
-      subject: "Formunuz bize ulaştı - DAYAN Dişli",
-      html: `
+    // Send auto-reply to user
+    await sendEmailViaResend(
+      email,
+      "Formunuz bize ulaştı - DAYAN Dişli",
+      `
         <p>Merhaba ${name},</p>
         <p>Mesajınız başarıyla elimize ulaştı.</p>
         <p>En kısa sürede sizinle iletişime geçeceğiz.</p>
-      `,
-    });
+      `
+    );
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
@@ -101,9 +120,9 @@ Deno.serve(async (req: Request) => {
     });
 
   } catch (err) {
-    console.error("SMTP ERROR:", err);
+    console.error("Email ERROR:", err);
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: (err as Error).message }),
       { status: 500, headers: corsHeaders }
     );
   }

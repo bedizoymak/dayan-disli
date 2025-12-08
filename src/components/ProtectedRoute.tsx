@@ -21,14 +21,14 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         .from("settings")
         .select("auth_enabled")
         .eq("id", 1)
-        .single();
+        .maybeSingle();
 
       if (settingsError) {
         console.error("Settings error:", settingsError);
       }
 
       // Eğer güvenlik kapalıysa → direkt erişim ver
-      if (settingsData?.auth_enabled === false) {
+      if (settingsData && settingsData.auth_enabled === false) {
         setIsAuthenticated(true);
         setIsAllowed(true);
         setLoading(false);
@@ -48,7 +48,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       // 3️⃣ Whitelist kontrolü
       const { data: allow, error: wlError } = await supabase.rpc(
         "is_email_allowed",
-        { check_email: session.user.email }
+        { check_email: session.user.email } as { check_email: string }
       );
 
       if (wlError) {
@@ -79,4 +79,3 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   return <>{children}</>;
 }
-//test4
