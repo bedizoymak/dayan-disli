@@ -109,7 +109,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
   };
 
   return (
-    <div className="mt-6">
+    <div className="mt-6 mb-6">
       {/* Collapsible Header */}
       <button
         onClick={handleTogglePanel}

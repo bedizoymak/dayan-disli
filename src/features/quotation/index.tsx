@@ -425,6 +425,9 @@ const TeklifPage = () => {
           </div>
         )}
 
+        {/* Recent Quotations Panel */}
+        <RecentQuotationsPanel onDownload={handleRecentQuotationDownload} />
+
         {/* Customer Information */}
         <CustomerInfoSection
           firma={form.firma}
@@ -442,9 +445,6 @@ const TeklifPage = () => {
             setShowCustomerModal(true);
           }}
         />
-
-        <RecentQuotationsPanel onDownload={handleRecentQuotationDownload} />
-
 
         {/* Product Table */}
         <ProductTableSection
