@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { ProductRow } from "../types";
 
-interface QuotationRecord {
+export interface QuotationRecord {
   id: string;
   teklif_no: string;
   firma: string;

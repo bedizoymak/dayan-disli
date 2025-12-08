@@ -14,7 +14,7 @@ import { EmailPreviewModal } from "./components/EmailPreviewModal";
 import { WhatsAppPreviewModal } from "./components/WhatsAppPreviewModal";
 import { CustomerSelectionModal } from "./components/CustomerSelectionModal";
 import { CustomerProfile, ProductRow } from "./types";
-import { RecentQuotationsPanel } from "./components/RecentQuotationsPanel";
+import { RecentQuotationsPanel, QuotationRecord } from "./components/RecentQuotationsPanel";
 
 
 
@@ -298,24 +298,46 @@ const TeklifPage = () => {
     }
   };
 
+  // Recent Quotation Preview Handler
+  const handleRecentQuotationPreview = async (quotation: QuotationRecord) => {
+    try {
+      // Load quotation data into the form
+      await form.loadQuotationByNo(quotation.teklif_no);
+      
+      // Determine issue date: created_at → updated_at → new Date()
+      const issueDate =
+        quotation.created_at ??
+        (quotation as any).updated_at ??
+        new Date().toISOString();
+      
+      // Use useQuotationPDF's preview function
+      const pdfBlob = await pdf.createPDFPreview(
+        quotation.teklif_no,
+        getFormData(),
+        form.calculateRowTotal,
+        form.calculateSubtotal,
+        form.calculateKDV,
+        form.calculateTotal,
+        form.formatCurrency,
+        issueDate
+      );
+      
+      // Open preview in new window
+      const previewUrl = URL.createObjectURL(pdfBlob);
+      window.open(previewUrl, '_blank');
+      // Note: URL will be cleaned up when the window is closed or by the hook's cleanup
+    } catch (error) {
+      console.error("Preview error:", error);
+      toast({
+        title: "Hata",
+        description: "Teklif ön izlemesi oluşturulamadı.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Recent Quotation Download Handler
-  const handleRecentQuotationDownload = async (quotation: {
-    teklif_no: string;
-    firma: string;
-    ilgili_kisi: string;
-    tel: string;
-    email: string;
-    konu: string;
-    products: string | ProductRow[];
-    active_currency: string;
-    notlar: string;
-    opsiyon: string;
-    teslim_suresi: string;
-    odeme_sekli: string;
-    teslim_yeri: string;
-    created_at?: string;
-    updated_at?: string;
-  }) => {
+  const handleRecentQuotationDownload = async (quotation: QuotationRecord) => {
     try {
       // Parse products if it's a string
       const products = typeof quotation.products === 'string' 
@@ -325,8 +347,8 @@ const TeklifPage = () => {
       // Extract issue date: use created_at, fallback to updated_at, else current date
       const issueDate = quotation.created_at 
         ? new Date(quotation.created_at)
-        : quotation.updated_at 
-        ? new Date(quotation.updated_at)
+        : (quotation as any).updated_at 
+        ? new Date((quotation as any).updated_at)
         : new Date();
 
       // Convert quotation to QuotationFormData format
@@ -426,7 +448,10 @@ const TeklifPage = () => {
         )}
 
         {/* Recent Quotations Panel */}
-        <RecentQuotationsPanel onDownload={handleRecentQuotationDownload} />
+        <RecentQuotationsPanel 
+          onDownload={handleRecentQuotationDownload}
+          onPreview={handleRecentQuotationPreview}
+        />
 
         {/* Customer Information */}
         <CustomerInfoSection
