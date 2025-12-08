@@ -85,7 +85,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload }: RecentQuotati
 
   // Load more quotations
   const handleLoadMore = () => {
-    setVisibleCount(prev => Math.min(prev + 5, filteredQuotes.length));
+    setVisibleCount(prev => prev + 5);
   };
 
   // Handle outside click to close panel
