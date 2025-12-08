@@ -301,24 +301,53 @@ const TeklifPage = () => {
   // Recent Quotation Preview Handler
   const handleRecentQuotationPreview = async (quotation: QuotationRecord) => {
     try {
-      // Load quotation data into the form
-      await form.loadQuotationByNo(quotation.teklif_no);
-      
+      // Parse products if it's a string
+      const products = typeof quotation.products === 'string' 
+        ? JSON.parse(quotation.products) 
+        : quotation.products;
+
       // Determine issue date: created_at → updated_at → new Date()
-      const issueDate =
-        quotation.created_at ??
-        (quotation as any).updated_at ??
-        new Date().toISOString();
-      
+      const issueDate = quotation.created_at 
+        ? new Date(quotation.created_at)
+        : (quotation as any).updated_at 
+        ? new Date((quotation as any).updated_at)
+        : new Date();
+
+      // Convert quotation to QuotationFormData format
+      const quotationFormData = {
+        firma: quotation.firma,
+        ilgiliKisi: quotation.ilgili_kisi,
+        tel: quotation.tel,
+        email: quotation.email,
+        konu: quotation.konu,
+        products: products,
+        activeCurrency: quotation.active_currency,
+        notlar: quotation.notlar,
+        opsiyon: quotation.opsiyon,
+        teslimSuresi: quotation.teslim_suresi,
+        odemeSekli: quotation.odeme_sekli,
+        teslimYeri: quotation.teslim_yeri,
+      };
+
+      // Create calculation functions based on quotation's products
+      const calculateRowTotal = (row: ProductRow) => row.miktar * row.birimFiyat;
+      const calculateSubtotal = () => products.reduce((sum: number, p: ProductRow) => sum + calculateRowTotal(p), 0);
+      const calculateKDV = () => calculateSubtotal() * 0.20;
+      const calculateTotal = () => calculateSubtotal() + calculateKDV();
+      const formatCurrency = (amount: number, currency = quotation.active_currency) => {
+        const symbols: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€" };
+        return `${symbols[currency] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      };
+
       // Use useQuotationPDF's preview function
       const pdfBlob = await pdf.createPDFPreview(
         quotation.teklif_no,
-        getFormData(),
-        form.calculateRowTotal,
-        form.calculateSubtotal,
-        form.calculateKDV,
-        form.calculateTotal,
-        form.formatCurrency,
+        quotationFormData,
+        calculateRowTotal,
+        calculateSubtotal,
+        calculateKDV,
+        calculateTotal,
+        formatCurrency,
         issueDate
       );
       
