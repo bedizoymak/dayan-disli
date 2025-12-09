@@ -39,7 +39,6 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const [recreatingId, setRecreatingId] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [visibleCount, setVisibleCount] = useState(5);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Fetch recent quotations when panel opens
@@ -69,7 +68,6 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   // Close panel and reset
   const closePanel = () => {
     setPanelOpen(false);
-    setVisibleCount(5);
   };
 
   // Toggle panel
@@ -81,16 +79,8 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
       if (recentQuotes.length === 0) {
         fetchRecentQuotes();
       }
-      setVisibleCount(5);
       onPanelOpen?.();
-    } else {
-      setVisibleCount(5);
     }
-  };
-
-  // Load more quotations
-  const handleLoadMore = () => {
-    setVisibleCount(prev => prev + 5);
   };
 
   // Handle outside click to close panel
@@ -100,8 +90,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
 
       if (
         panelRef.current &&
-        !panelRef.current.contains(event.target as Node) &&
-        !(event.target as HTMLElement).closest(".load-more-btn")
+        !panelRef.current.contains(event.target as Node)
       ) {
         closePanel();
       }
@@ -151,19 +140,9 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     );
   }, [recentQuotes, searchTerm]);
 
-  // Reset visible count when search term changes
-  useEffect(() => {
-    setVisibleCount(5);
-  }, [searchTerm]);
-
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
   };
-
-  // Get visible quotes based on current count
-  const visibleQuotes = useMemo(() => {
-    return filteredQuotes.slice(0, visibleCount);
-  }, [filteredQuotes, visibleCount]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -255,7 +234,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
                         </td>
                       </tr>
                     ) : (
-                      visibleQuotes.map((quote) => (
+                      filteredQuotes.map((quote) => (
                     <tr 
                       key={quote.id}
                       className="hover:bg-slate-700/20 transition-colors"
@@ -303,16 +282,6 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
                     )}
                   </tbody>
                 </table>
-              </div>
-              {/* Load More Button */}
-              <div className="px-4 py-3 border-t border-slate-700/50 flex justify-center">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={visibleCount >= filteredQuotes.length}
-                  className="load-more-btn px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50"
-                >
-                  Daha Fazla Göster
-                </button>
               </div>
             </>
           )}
