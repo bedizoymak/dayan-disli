@@ -3,8 +3,7 @@ import { ChevronDown, FileText, Loader2, Download, Search, Eye } from "lucide-re
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { ProductRow } from "../types";
-import { EmailPreviewModal } from "./EmailPreviewModal";
-import { formatName } from "../hooks/useQuotationForm";
+import { QuotationPreviewModal } from "./QuotationPreviewModal";
 
 export interface QuotationRecord {
   id: string;
@@ -301,7 +300,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
         </div>
       </div>
 
-      <EmailPreviewModal
+      <QuotationPreviewModal
         open={previewOpen}
         onOpenChange={(open) => {
           setPreviewOpen(open);
@@ -311,20 +310,8 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
             setPreviewQuote(null);
           }
         }}
-        currentTeklifNo={previewQuote?.teklif_no || ""}
-        email={previewQuote?.email || ""}
-        firma={previewQuote?.firma || ""}
-        ilgiliKisi={previewQuote?.ilgili_kisi || ""}
-        pdfPreviewUrl={pdfPreviewUrl || ""}
-        total={previewQuote?.total || 0}
-        activeCurrency={previewQuote?.active_currency || "TRY"}
-        isSending={false}
-        onSend={() => {}}
-        formatCurrency={(amount: number, currency?: string) => {
-          const symbols: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€" };
-          return `${symbols[currency || "TRY"] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }}
-        formatName={formatName}
+        pdfPreviewUrl={pdfPreviewUrl || undefined}
+        teklifNo={previewQuote?.teklif_no || ""}
       />
     </div>
   );
