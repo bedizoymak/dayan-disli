@@ -179,8 +179,8 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
 
       {/* Collapsible Content */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          panelOpen ? 'max-h-[500px] opacity-100 mt-2' : 'max-h-0 opacity-0'
+        className={`overflow-y-auto transition-all duration-300 ease-in-out ${
+          panelOpen ? 'max-h-screen opacity-100 mt-2' : 'max-h-0 opacity-0'
         }`}
       >
         <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg overflow-hidden">
