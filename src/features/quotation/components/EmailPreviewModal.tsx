@@ -155,6 +155,7 @@ export function EmailPreviewModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 
