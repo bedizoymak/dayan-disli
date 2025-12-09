@@ -17,7 +17,7 @@ export function QuotationPreviewModal({
 }: QuotationPreviewModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col bg-slate-800 border-slate-700 p-0">
+      <DialogContent className="w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col bg-slate-800 border-slate-700 p-0 [&>button]:hidden">
         <DialogHeader className="px-6 py-4 border-b border-slate-700 flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-white">
