@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { ChevronDown, FileText, Loader2, Download, Search, Eye } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +47,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const [previewQuote, setPreviewQuote] = useState<QuotationRecord | null>(null);
   const [previewQuoteIndex, setPreviewQuoteIndex] = useState<number>(-1);
   const [isNavigating, setIsNavigating] = useState(false);
+  const blobUrlRef = useRef<string | null>(null);
 
   // Fetch recent quotations when panel opens
   const fetchRecentQuotes = async () => {
@@ -107,14 +108,56 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     };
   }, [panelOpen]);
 
+  // Filtered quotes (needed for helper functions)
+  const filteredQuotes = useMemo(() => {
+    if (!searchTerm.trim()) return recentQuotes;
+    return recentQuotes.filter(q => 
+      q.firma?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [recentQuotes, searchTerm]);
+
+  // Ensure products is always an array
+  const normalizeProducts = useCallback((products: string | ProductRow[]): ProductRow[] => {
+    if (typeof products === "string") {
+      try {
+        return JSON.parse(products);
+      } catch (e) {
+        console.error("Failed to parse products:", e);
+        return [];
+      }
+    }
+    return products;
+  }, []);
+
+  // Cleanup blob URL
+  const cleanupBlobUrl = useCallback(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }, []);
+
+  // Get quotation by index (helper function)
+  const getQuotationByIndex = useCallback((index: number): QuotationRecord | null => {
+    if (index < 0 || index >= filteredQuotes.length) return null;
+    return filteredQuotes[index];
+  }, [filteredQuotes]);
+
+  // Get next quotation
+  const getNextQuotation = useCallback((currentIndex: number): QuotationRecord | null => {
+    return getQuotationByIndex(currentIndex + 1);
+  }, [getQuotationByIndex]);
+
+  // Get previous quotation
+  const getPreviousQuotation = useCallback((currentIndex: number): QuotationRecord | null => {
+    return getQuotationByIndex(currentIndex - 1);
+  }, [getQuotationByIndex]);
+
   const handleRecreatePDF = async (quote: QuotationRecord) => {
     try {
       const fileName = `${quote.teklif_no}.pdf`;
   
-      const products =
-        typeof quote.products === "string"
-          ? JSON.parse(quote.products)
-          : quote.products;
+      const products = normalizeProducts(quote.products);
   
       const pdfBytes = await onDownload?.({
         ...quote,
@@ -128,7 +171,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = fileName; // 🔥 DOĞRU DOSYA ADI BURADA
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -143,13 +186,15 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
       });
     }
   };
-  
 
   const handlePreviewPDF = async (quote: QuotationRecord) => {
     if (!onPreview) return;
 
     setIsPreviewLoading(true);
     try {
+      // Cleanup previous blob URL
+      cleanupBlobUrl();
+
       const blob = await onPreview(quote);
       const index = filteredQuotes.findIndex((q) => q.id === quote.id);
       setPdfBlob(blob);
@@ -173,7 +218,17 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
 
     setIsNavigating(true);
     try {
-      const prevQuote = filteredQuotes[previewQuoteIndex - 1];
+      const prevQuote = getPreviousQuotation(previewQuoteIndex);
+      if (!prevQuote) {
+        setIsNavigating(false);
+        return;
+      }
+
+      // Cleanup previous blob
+      cleanupBlobUrl();
+      const oldBlob = pdfBlob;
+      setPdfBlob(null); // Clear blob to trigger cleanup in PDFViewer
+
       const blob = await onPreview(prevQuote);
       setPdfBlob(blob);
       setPreviewQuote(prevQuote);
@@ -195,7 +250,17 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
 
     setIsNavigating(true);
     try {
-      const nextQuote = filteredQuotes[previewQuoteIndex + 1];
+      const nextQuote = getNextQuotation(previewQuoteIndex);
+      if (!nextQuote) {
+        setIsNavigating(false);
+        return;
+      }
+
+      // Cleanup previous blob
+      cleanupBlobUrl();
+      const oldBlob = pdfBlob;
+      setPdfBlob(null); // Clear blob to trigger cleanup in PDFViewer
+
       const blob = await onPreview(nextQuote);
       setPdfBlob(blob);
       setPreviewQuote(nextQuote);
@@ -215,23 +280,13 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const handleDownloadFromPreview = () => {
     if (!previewQuote || !onDownload) return;
 
-    const products =
-      typeof previewQuote.products === "string"
-        ? JSON.parse(previewQuote.products)
-        : previewQuote.products;
+    const products = normalizeProducts(previewQuote.products);
 
     onDownload({
       ...previewQuote,
       products,
     });
   };
-
-  const filteredQuotes = useMemo(() => {
-    if (!searchTerm.trim()) return recentQuotes;
-    return recentQuotes.filter(q => 
-      q.firma?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [recentQuotes, searchTerm]);
 
   // Reset visible count when search changes
   useEffect(() => {
@@ -396,9 +451,9 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
         onOpenChange={(open) => {
           setPreviewOpen(open);
           if (!open) {
+            // Cleanup blob URL
+            cleanupBlobUrl();
             if (pdfBlob) {
-              // Cleanup blob URL if it was created
-              // (blob itself doesn't need explicit cleanup, but we clear state)
               setPdfBlob(null);
             }
             setPreviewQuote(null);

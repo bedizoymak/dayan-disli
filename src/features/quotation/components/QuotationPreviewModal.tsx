@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { X, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { PDFViewer } from "./PDFViewer";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface QuotationPreviewModalProps {
   open: boolean;
@@ -30,18 +30,34 @@ export function QuotationPreviewModal({
   isNavigating = false,
 }: QuotationPreviewModalProps) {
   const [transitionClass, setTransitionClass] = useState("");
+  const [slideDirection, setSlideDirection] = useState<"left" | "right" | null>(null);
+  const prevPdfBlobRef = useRef<Blob | null>(null);
 
   // Handle slide transitions when navigating
   useEffect(() => {
     if (isNavigating) {
-      setTransitionClass("opacity-0 translate-x-4");
+      // Determine slide direction based on blob change
+      if (prevPdfBlobRef.current !== pdfBlob && prevPdfBlobRef.current !== null) {
+        // This is a navigation - determine direction from context
+        // We'll use a simple heuristic: if navigating left, slide right (out), then left (in)
+        // For now, we'll use a generic slide animation
+        setSlideDirection("left");
+        setTransitionClass("opacity-0 translate-x-full");
+      } else {
+        setTransitionClass("opacity-0 translate-x-4");
+      }
+      
       const timer = setTimeout(() => {
         setTransitionClass("opacity-100 translate-x-0");
-      }, 50);
+        setSlideDirection(null);
+      }, 300);
       return () => clearTimeout(timer);
     } else {
       setTransitionClass("opacity-100 translate-x-0");
+      setSlideDirection(null);
     }
+    
+    prevPdfBlobRef.current = pdfBlob;
   }, [isNavigating, pdfBlob]);
 
   const handleDownload = () => {
@@ -113,7 +129,7 @@ export function QuotationPreviewModal({
           </div>
         </DialogHeader>
         
-        <div className={`flex-1 min-h-0 overflow-hidden relative transition-all duration-300 ${transitionClass}`}>
+        <div className={`flex-1 min-h-0 overflow-hidden relative transition-all duration-300 ease-in-out ${transitionClass}`}>
           <PDFViewer
             blob={pdfBlob}
             onClose={handleClose}

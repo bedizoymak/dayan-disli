@@ -35,6 +35,7 @@ export function PDFViewer({
   const [error, setError] = useState<string | null>(null);
   const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
   const pageContainersRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const renderTasksRef = useRef<Map<number, pdfjsLib.RenderTask>>(new Map());
 
   // Touch gesture state
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -42,6 +43,7 @@ export function PDFViewer({
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
   const isZoomingRef = useRef(false);
   const isNavigatingRef = useRef(false);
+  const lastBlobRef = useRef<Blob | null>(null);
 
   // Calculate base scale to fit viewport
   const calculateBaseScale = useCallback(async (pdf: pdfjsLib.PDFDocumentProxy) => {
@@ -65,14 +67,64 @@ export function PDFViewer({
     }
   }, []);
 
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    // Cancel all render tasks
+    renderTasksRef.current.forEach((task) => {
+      try {
+        task.cancel();
+      } catch (e) {
+        // Ignore cancellation errors
+      }
+    });
+    renderTasksRef.current.clear();
+
+    // Clear canvas refs
+    canvasRefs.current.clear();
+    pageContainersRef.current.clear();
+
+    // Close PDF document
+    if (pdfDoc) {
+      try {
+        pdfDoc.destroy();
+      } catch (e) {
+        // Ignore destroy errors
+      }
+    }
+  }, [pdfDoc]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
+
   // Load PDF document
   useEffect(() => {
     if (!blob) {
+      cleanup();
       setPdfDoc(null);
       setNumPages(0);
       setCurrentPage(1);
       setBaseScale(1);
+      setScale(1);
+      lastBlobRef.current = null;
+      // Reset scroll position
+      if (pagesRef.current) {
+        pagesRef.current.scrollTop = 0;
+      }
       return;
+    }
+
+    // Reset scale and scroll when blob changes
+    if (lastBlobRef.current !== blob) {
+      setScale(1);
+      lastBlobRef.current = blob;
+      // Reset scroll position
+      if (pagesRef.current) {
+        pagesRef.current.scrollTop = 0;
+      }
     }
 
     setIsLoading(true);
@@ -80,6 +132,9 @@ export function PDFViewer({
 
     const loadPDF = async () => {
       try {
+        // Cleanup previous PDF
+        cleanup();
+
         const arrayBuffer = await blob.arrayBuffer();
         const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;
@@ -92,6 +147,13 @@ export function PDFViewer({
         setNumPages(pdf.numPages);
         setCurrentPage(1);
         setScale(1);
+        
+        // Reset scroll position after a brief delay to ensure DOM is ready
+        setTimeout(() => {
+          if (pagesRef.current) {
+            pagesRef.current.scrollTop = 0;
+          }
+        }, 100);
       } catch (err) {
         console.error("Error loading PDF:", err);
         setError("PDF yüklenemedi");
@@ -101,7 +163,7 @@ export function PDFViewer({
     };
 
     loadPDF();
-  }, [blob, calculateBaseScale]);
+  }, [blob, calculateBaseScale, cleanup]);
 
   // Render a single page
   const renderPage = useCallback(
@@ -113,6 +175,16 @@ export function PDFViewer({
       if (!canvas || !container) return;
 
       try {
+        // Cancel previous render task for this page
+        const existingTask = renderTasksRef.current.get(pageNum);
+        if (existingTask) {
+          try {
+            existingTask.cancel();
+          } catch (e) {
+            // Ignore cancellation errors
+          }
+        }
+
         const page = await pdfDoc.getPage(pageNum);
         
         // Calculate final scale: baseScale fits viewport, scale is user zoom (1-4)
@@ -133,14 +205,24 @@ export function PDFViewer({
         const context = canvas.getContext("2d");
         if (!context) return;
 
+        // Clear canvas before rendering
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
         };
 
-        await page.render(renderContext).promise;
+        const renderTask = page.render(renderContext);
+        renderTasksRef.current.set(pageNum, renderTask);
+        await renderTask.promise;
+        renderTasksRef.current.delete(pageNum);
       } catch (err) {
-        console.error(`Error rendering page ${pageNum}:`, err);
+        // Ignore cancellation errors
+        if ((err as Error).name !== "RenderingCancelledException") {
+          console.error(`Error rendering page ${pageNum}:`, err);
+        }
+        renderTasksRef.current.delete(pageNum);
       }
     },
     [pdfDoc, baseScale, scale]
@@ -212,6 +294,7 @@ export function PDFViewer({
       if (isZoomingRef.current && e.touches.length === 2) {
         // Pinch zoom
         e.preventDefault();
+        e.stopPropagation();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const distance = Math.hypot(
@@ -226,8 +309,15 @@ export function PDFViewer({
         }
       } else if (e.touches.length === 1 && touchStartRef.current && scale === 1) {
         // Single touch swipe (only when not zoomed)
-        e.preventDefault();
         const touch = e.touches[0];
+        const deltaX = touch.clientX - touchStartRef.current.x;
+        const deltaY = touch.clientY - touchStartRef.current.y;
+        
+        // Only prevent default if it's a horizontal swipe (for navigation)
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+          e.preventDefault();
+        }
+        
         touchMoveRef.current = {
           x: touch.clientX,
           y: touch.clientY,
@@ -272,8 +362,8 @@ export function PDFViewer({
           }
         } else {
           // Vertical swipe
-          if (deltaY < -50 && onClose) {
-            // Swipe up - close modal
+          if (deltaY < -50 && absDeltaY > absDeltaX && onClose) {
+            // Swipe up - close modal (only if vertical movement is dominant)
             onClose();
           }
         }
@@ -315,7 +405,8 @@ export function PDFViewer({
       }
     };
 
-    pagesContainer.addEventListener("scroll", handleScroll);
+    // Use passive listener for better performance
+    pagesContainer.addEventListener("scroll", handleScroll, { passive: true });
     return () => pagesContainer.removeEventListener("scroll", handleScroll);
   }, [scale, currentPage, numPages]);
 
@@ -369,6 +460,7 @@ export function PDFViewer({
         style={{
           scrollSnapType: scale === 1 ? "y mandatory" : "none",
           scrollBehavior: "smooth",
+          WebkitOverflowScrolling: "touch", // Smooth scrolling on iOS
         }}
       >
         {Array.from({ length: numPages }, (_, i) => {
@@ -381,12 +473,11 @@ export function PDFViewer({
               }}
               className="flex items-center justify-center w-full"
               style={{
-                height: "100vh",
-                minHeight: "100vh",
+                height: scale === 1 ? "100vh" : "auto",
+                minHeight: scale === 1 ? "100vh" : "auto",
                 scrollSnapAlign: scale === 1 ? "start" : "none",
                 scrollSnapStop: scale === 1 ? "always" : "none",
-                transform: scale > 1 ? `scale(${scale})` : "none",
-                transformOrigin: "center center",
+                padding: scale > 1 ? "20px" : "0",
               }}
             >
               <canvas
@@ -400,6 +491,8 @@ export function PDFViewer({
                   width: scale === 1 ? "100%" : "auto",
                   height: scale === 1 ? "100%" : "auto",
                   objectFit: scale === 1 ? "contain" : "none",
+                  transform: scale > 1 ? `scale(${scale})` : "none",
+                  transformOrigin: "center top",
                 }}
               />
             </div>
