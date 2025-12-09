@@ -80,14 +80,15 @@ export function EmailPreviewModal({
           </div>
 
           {pdfPreviewUrl && (
-            <div className="border border-slate-600 rounded-lg overflow-hidden">
-              <iframe
-            src={`${pdfPreviewUrl}#filename=${encodeURIComponent(teklifNo + ".pdf")}`} 
-                className="w-full h-[300px] bg-white"
-                title="PDF Preview"
-              />
-            </div>
-          )}
+  <div className="border border-slate-600 rounded-lg overflow-hidden">
+    <iframe
+      src={`${pdfPreviewUrl}#filename=${encodeURIComponent(`${teklifNo}.pdf`)}`}
+      className="w-full h-[300px] bg-white"
+      title={`${teklifNo}.pdf`}
+    />
+  </div>
+)}
+
         </div>
         
         <DialogFooter className="gap-2">
