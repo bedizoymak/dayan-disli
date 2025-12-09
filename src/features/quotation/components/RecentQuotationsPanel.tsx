@@ -3,7 +3,6 @@ import { ChevronDown, FileText, Loader2, Download, Search, Eye } from "lucide-re
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { ProductRow } from "../types";
-import { PdfPreviewModal } from "@/features/quotation/components/PdfPreviewModal";
 
 export interface QuotationRecord {
   id: string;
@@ -38,11 +37,8 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const [recentQuotes, setRecentQuotes] = useState<QuotationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [recreatingId, setRecreatingId] = useState<string | null>(null);
-  const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [visibleCount, setVisibleCount] = useState(5);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Fetch recent quotations when panel opens
@@ -112,33 +108,23 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     finally { setRecreatingId(null); }
   };
 
-  const handlePreviewPDF = async (quote: QuotationRecord) => {
+  const handleOpenPDF = async (quote: QuotationRecord) => {
     if (!onPreview) return;
 
-    setPreviewingId(quote.teklif_no);
     try {
       const blob = await onPreview(quote);
       const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      setPreviewOpen(true);
+      window.open(url, "_blank");
+      // Clean up the blob URL after a short delay to allow the browser to load it
+      setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (error) {
-      console.error("Preview error:", error);
+      console.error("PDF açma hatası:", error);
       toast({
         title: "Hata",
-        description: "Teklif ön izlemesi oluşturulamadı.",
+        description: "PDF açılamadı.",
         variant: "destructive",
       });
-    } finally {
-      setPreviewingId(null);
     }
-  };
-
-  const handleClosePreview = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    setPreviewUrl(null);
-    setPreviewOpen(false);
   };
 
   const filteredQuotes = useMemo(() => {
@@ -258,16 +244,12 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => handlePreviewPDF(quote)}
-                                disabled={!onPreview || previewingId === quote.teklif_no}
-                                title="Ön İzleme"
+                                onClick={() => handleOpenPDF(quote)}
+                                disabled={!onPreview}
+                                title="Yeni Sekmede Aç"
                                 className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {previewingId === quote.teklif_no ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Eye className="w-4 h-4" />
-                                )}
+                                <Eye className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleRecreatePDF(quote)}
@@ -305,18 +287,6 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
 
         </div>
       </div>
-
-      <PdfPreviewModal
-        open={previewOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            handleClosePreview();
-          }
-          setPreviewOpen(open);
-        }}
-        pdfUrl={previewUrl ?? ""}
-        title="Teklif Ön İzleme"
-      />
     </div>
   );
 }
