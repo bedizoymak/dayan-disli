@@ -3,6 +3,8 @@ import { ChevronDown, FileText, Loader2, Download, Search, Eye } from "lucide-re
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { ProductRow } from "../types";
+import { EmailPreviewModal } from "./EmailPreviewModal";
+import { formatName } from "../hooks/useQuotationForm";
 
 export interface QuotationRecord {
   id: string;
@@ -40,6 +42,10 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const [searchTerm, setSearchTerm] = useState("");
   const [visibleCount, setVisibleCount] = useState(5);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewQuote, setPreviewQuote] = useState<QuotationRecord | null>(null);
 
   // Fetch recent quotations when panel opens
   const fetchRecentQuotes = async () => {
@@ -108,15 +114,16 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     finally { setRecreatingId(null); }
   };
 
-  const handleOpenPDF = async (quote: QuotationRecord) => {
+  const handlePreviewPDF = async (quote: QuotationRecord) => {
     if (!onPreview) return;
 
+    setIsPreviewLoading(true);
     try {
       const blob = await onPreview(quote);
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-      // Clean up the blob URL after a short delay to allow the browser to load it
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+      setPdfPreviewUrl(url);
+      setPreviewQuote(quote);
+      setPreviewOpen(true);
     } catch (error) {
       console.error("PDF açma hatası:", error);
       toast({
@@ -124,6 +131,8 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
         description: "PDF açılamadı.",
         variant: "destructive",
       });
+    } finally {
+      setIsPreviewLoading(false);
     }
   };
 
@@ -244,12 +253,16 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => handleOpenPDF(quote)}
-                                disabled={!onPreview}
-                                title="Yeni Sekmede Aç"
+                                onClick={() => handlePreviewPDF(quote)}
+                                disabled={!onPreview || isPreviewLoading}
+                                title="Önizle"
                                 className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                <Eye className="w-4 h-4" />
+                                {isPreviewLoading ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
                               </button>
                               <button
                                 onClick={() => handleRecreatePDF(quote)}
@@ -287,6 +300,32 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
 
         </div>
       </div>
+
+      <EmailPreviewModal
+        open={previewOpen}
+        onOpenChange={(open) => {
+          setPreviewOpen(open);
+          if (!open && pdfPreviewUrl) {
+            URL.revokeObjectURL(pdfPreviewUrl);
+            setPdfPreviewUrl(null);
+            setPreviewQuote(null);
+          }
+        }}
+        currentTeklifNo={previewQuote?.teklif_no || ""}
+        email={previewQuote?.email || ""}
+        firma={previewQuote?.firma || ""}
+        ilgiliKisi={previewQuote?.ilgili_kisi || ""}
+        pdfPreviewUrl={pdfPreviewUrl || ""}
+        total={previewQuote?.total || 0}
+        activeCurrency={previewQuote?.active_currency || "TRY"}
+        isSending={false}
+        onSend={() => {}}
+        formatCurrency={(amount: number, currency?: string) => {
+          const symbols: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€" };
+          return `${symbols[currency || "TRY"] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }}
+        formatName={formatName}
+      />
     </div>
   );
 }
