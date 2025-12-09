@@ -35,11 +35,12 @@ export function QuotationPreviewModal({
         
         <div className="flex-1 min-h-0 p-6 overflow-hidden">
           {pdfPreviewUrl ? (
-            <iframe 
-              src={pdfPreviewUrl} 
-              className="w-full h-full rounded-lg bg-slate-900"
-              title="PDF Preview"
-            />
+            <iframe
+            src={`${pdfPreviewUrl}#filename=${encodeURIComponent(`${teklifNo}.pdf`)}`}
+            className="w-full h-full rounded-lg bg-slate-900"
+            title={`${teklifNo}.pdf`}
+          />
+          
           ) : (
             <div className="w-full h-full flex items-center justify-center text-slate-400">
               PDF yükleniyor...
