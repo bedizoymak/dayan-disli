@@ -106,12 +106,42 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   }, [panelOpen]);
 
   const handleRecreatePDF = async (quote: QuotationRecord) => {
-    if (!onDownload) return;
-    
-    setRecreatingId(quote.teklif_no);
-    try { await onDownload(quote); } catch {}
-    finally { setRecreatingId(null); }
+    try {
+      const fileName = `${quote.teklif_no}.pdf`;
+  
+      const products =
+        typeof quote.products === "string"
+          ? JSON.parse(quote.products)
+          : quote.products;
+  
+      const pdfBytes = await onDownload?.({
+        ...quote,
+        products,
+      });
+  
+      if (!pdfBytes) return;
+  
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(blob);
+  
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName; // 🔥 DOĞRU DOSYA ADI BURADA
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      toast({
+        title: "Hata",
+        description: "PDF indirilemedi.",
+        variant: "destructive",
+      });
+    }
   };
+  
 
   const handlePreviewPDF = async (quote: QuotationRecord) => {
     if (!onPreview) return;
