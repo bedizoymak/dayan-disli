@@ -41,10 +41,12 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const [searchTerm, setSearchTerm] = useState("");
   const [visibleCount, setVisibleCount] = useState(5);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewQuote, setPreviewQuote] = useState<QuotationRecord | null>(null);
+  const [previewQuoteIndex, setPreviewQuoteIndex] = useState<number>(-1);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Fetch recent quotations when panel opens
   const fetchRecentQuotes = async () => {
@@ -149,9 +151,10 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     setIsPreviewLoading(true);
     try {
       const blob = await onPreview(quote);
-      const url = URL.createObjectURL(blob);
-      setPdfPreviewUrl(url);
+      const index = filteredQuotes.findIndex((q) => q.id === quote.id);
+      setPdfBlob(blob);
       setPreviewQuote(quote);
+      setPreviewQuoteIndex(index);
       setPreviewOpen(true);
     } catch (error) {
       console.error("PDF açma hatası:", error);
@@ -163,6 +166,64 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     } finally {
       setIsPreviewLoading(false);
     }
+  };
+
+  const handleNavigateLeft = async () => {
+    if (previewQuoteIndex <= 0 || !onPreview || isNavigating) return;
+
+    setIsNavigating(true);
+    try {
+      const prevQuote = filteredQuotes[previewQuoteIndex - 1];
+      const blob = await onPreview(prevQuote);
+      setPdfBlob(blob);
+      setPreviewQuote(prevQuote);
+      setPreviewQuoteIndex(previewQuoteIndex - 1);
+    } catch (error) {
+      console.error("PDF navigasyon hatası:", error);
+      toast({
+        title: "Hata",
+        description: "Önceki teklif yüklenemedi.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsNavigating(false);
+    }
+  };
+
+  const handleNavigateRight = async () => {
+    if (previewQuoteIndex >= filteredQuotes.length - 1 || !onPreview || isNavigating) return;
+
+    setIsNavigating(true);
+    try {
+      const nextQuote = filteredQuotes[previewQuoteIndex + 1];
+      const blob = await onPreview(nextQuote);
+      setPdfBlob(blob);
+      setPreviewQuote(nextQuote);
+      setPreviewQuoteIndex(previewQuoteIndex + 1);
+    } catch (error) {
+      console.error("PDF navigasyon hatası:", error);
+      toast({
+        title: "Hata",
+        description: "Sonraki teklif yüklenemedi.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsNavigating(false);
+    }
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (!previewQuote || !onDownload) return;
+
+    const products =
+      typeof previewQuote.products === "string"
+        ? JSON.parse(previewQuote.products)
+        : previewQuote.products;
+
+    onDownload({
+      ...previewQuote,
+      products,
+    });
   };
 
   const filteredQuotes = useMemo(() => {
@@ -334,14 +395,25 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
         open={previewOpen}
         onOpenChange={(open) => {
           setPreviewOpen(open);
-          if (!open && pdfPreviewUrl) {
-            URL.revokeObjectURL(pdfPreviewUrl);
-            setPdfPreviewUrl(null);
+          if (!open) {
+            if (pdfBlob) {
+              // Cleanup blob URL if it was created
+              // (blob itself doesn't need explicit cleanup, but we clear state)
+              setPdfBlob(null);
+            }
             setPreviewQuote(null);
+            setPreviewQuoteIndex(-1);
+            setIsNavigating(false);
           }
         }}
-        pdfPreviewUrl={pdfPreviewUrl || undefined}
+        pdfBlob={pdfBlob}
         teklifNo={previewQuote?.teklif_no || ""}
+        onDownload={handleDownloadFromPreview}
+        onNavigateLeft={handleNavigateLeft}
+        onNavigateRight={handleNavigateRight}
+        canNavigateLeft={previewQuoteIndex > 0}
+        canNavigateRight={previewQuoteIndex >= 0 && previewQuoteIndex < filteredQuotes.length - 1}
+        isNavigating={isNavigating}
       />
     </div>
   );
