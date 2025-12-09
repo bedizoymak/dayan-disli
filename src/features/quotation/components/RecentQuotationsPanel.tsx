@@ -469,6 +469,8 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
         canNavigateLeft={previewQuoteIndex > 0}
         canNavigateRight={previewQuoteIndex >= 0 && previewQuoteIndex < filteredQuotes.length - 1}
         isNavigating={isNavigating}
+        onNext={handleNavigateRight}
+        onPrev={handleNavigateLeft}
       />
     </div>
   );

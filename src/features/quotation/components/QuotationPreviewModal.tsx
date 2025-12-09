@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { X, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { PDFViewer } from "./PDFViewer";
 import { useEffect, useState, useRef } from "react";
+import { useGestureControls } from "../hooks/useGestureControls";
 
 interface QuotationPreviewModalProps {
   open: boolean;
@@ -15,6 +16,8 @@ interface QuotationPreviewModalProps {
   canNavigateLeft?: boolean;
   canNavigateRight?: boolean;
   isNavigating?: boolean;
+  onNext?: () => void;
+  onPrev?: () => void;
 }
 
 export function QuotationPreviewModal({
@@ -28,10 +31,33 @@ export function QuotationPreviewModal({
   canNavigateLeft = false,
   canNavigateRight = false,
   isNavigating = false,
+  onNext,
+  onPrev,
 }: QuotationPreviewModalProps) {
   const [transitionClass, setTransitionClass] = useState("");
   const [slideDirection, setSlideDirection] = useState<"left" | "right" | null>(null);
   const prevPdfBlobRef = useRef<Blob | null>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
+
+  const handleClose = () => {
+    onOpenChange(false);
+  };
+
+  // Gesture controls
+  const { scale, isPinching, resetScale } = useGestureControls({
+    containerRef: viewerRef,
+    onClose: handleClose,
+    onNext: () => {
+      if (onNext && canNavigateRight) {
+        onNext();
+      }
+    },
+    onPrev: () => {
+      if (onPrev && canNavigateLeft) {
+        onPrev();
+      }
+    },
+  });
 
   // Handle slide transitions when navigating
   useEffect(() => {
@@ -73,9 +99,18 @@ export function QuotationPreviewModal({
     }
   };
 
-  const handleClose = () => {
-    onOpenChange(false);
-  };
+  // Reset scale when PDF changes or modal closes
+  useEffect(() => {
+    if (!open) {
+      resetScale();
+    }
+  }, [open, resetScale]);
+
+  useEffect(() => {
+    if (pdfBlob !== prevPdfBlobRef.current && prevPdfBlobRef.current !== null) {
+      resetScale();
+    }
+  }, [pdfBlob, resetScale]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -130,14 +165,25 @@ export function QuotationPreviewModal({
         </DialogHeader>
         
         <div className={`flex-1 min-h-0 overflow-hidden relative transition-all duration-300 ease-in-out ${transitionClass}`}>
-          <PDFViewer
-            blob={pdfBlob}
-            onClose={handleClose}
-            onNavigateLeft={onNavigateLeft}
-            onNavigateRight={onNavigateRight}
-            canNavigateLeft={canNavigateLeft}
-            canNavigateRight={canNavigateRight}
-          />
+          <div
+            ref={viewerRef}
+            className="w-full h-full overflow-auto"
+            style={{
+              transform: `scale(${scale})`,
+              transformOrigin: "center center",
+              transition: isPinching ? "none" : "transform 0.1s ease-out",
+              touchAction: scale === 1 ? "pan-y" : "pan-x pan-y pinch-zoom",
+            }}
+          >
+            <PDFViewer
+              blob={pdfBlob}
+              onClose={handleClose}
+              onNavigateLeft={onNavigateLeft}
+              onNavigateRight={onNavigateRight}
+              canNavigateLeft={canNavigateLeft}
+              canNavigateRight={canNavigateRight}
+            />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
