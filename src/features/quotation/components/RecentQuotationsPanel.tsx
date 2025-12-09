@@ -1,8 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, FileText, Loader2, Download, Search, Eye } from "lucide-react";
+import { ChevronDown, FileText, Loader2, Download, Search, Eye, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { ProductRow } from "../types";
+import { Worker, Viewer } from "@react-pdf-viewer/core";
+import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
+import "@react-pdf-viewer/core/lib/styles/index.css";
+import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 
 export interface QuotationRecord {
   id: string;
@@ -28,7 +32,7 @@ export interface QuotationRecord {
 interface RecentQuotationsPanelProps {
   onPanelOpen?: () => void;
   onDownload?: (quotation: QuotationRecord) => void;
-  onPreview?: (quotation: QuotationRecord) => void;
+  onPreview?: (quotation: QuotationRecord) => Promise<Blob>;
 }
 
 export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: RecentQuotationsPanelProps) {
@@ -40,20 +44,24 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [visibleCount, setVisibleCount] = useState(5);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   // Fetch recent quotations when panel opens
   const fetchRecentQuotes = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from<QuotationRecord>("quotations")
+        .from("quotations")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(1000);
 
       if (error) throw error;
-      setRecentQuotes(data || []);
+      setRecentQuotes((data as QuotationRecord[]) || []);
     } catch (error) {
       console.error("Failed to fetch recent quotations:", error);
       toast({
@@ -113,8 +121,29 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     if (!onPreview) return;
 
     setPreviewingId(quote.teklif_no);
-    try { await onPreview(quote); } catch {}
-    finally { setPreviewingId(null); }
+    try {
+      const blob = await onPreview(quote);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error("Preview error:", error);
+      toast({
+        title: "Hata",
+        description: "Teklif ön izlemesi oluşturulamadı.",
+        variant: "destructive",
+      });
+    } finally {
+      setPreviewingId(null);
+    }
+  };
+
+  const handleClosePreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setPreviewOpen(false);
   };
 
   const filteredQuotes = useMemo(() => {
@@ -281,7 +310,32 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
 
         </div>
       </div>
+
+      {/* PDF Preview Modal */}
+      {previewOpen && previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="relative w-[90vw] h-[90vh] bg-slate-900 rounded-lg overflow-hidden flex flex-col">
+            {/* Close Button */}
+            <button
+              onClick={handleClosePreview}
+              className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+              title="Kapat"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* PDF Viewer */}
+            <div className="flex-1 w-full h-full">
+              <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+                <Viewer
+                  fileUrl={previewUrl}
+                  plugins={[defaultLayoutPluginInstance]}
+                />
+              </Worker>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-//test

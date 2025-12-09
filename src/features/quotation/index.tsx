@@ -299,70 +299,58 @@ const TeklifPage = () => {
   };
 
   // Recent Quotation Preview Handler
-  const handleRecentQuotationPreview = async (quotation: QuotationRecord) => {
-    try {
-      // Parse products if it's a string
-      const products = typeof quotation.products === 'string' 
-        ? JSON.parse(quotation.products) 
-        : quotation.products;
+  const handleRecentQuotationPreview = async (quotation: QuotationRecord): Promise<Blob> => {
+    // Parse products if it's a string
+    const products = typeof quotation.products === 'string' 
+      ? JSON.parse(quotation.products) 
+      : quotation.products;
 
-      // Determine issue date: created_at → updated_at → new Date()
-      const issueDate = quotation.created_at 
-        ? new Date(quotation.created_at)
-        : (quotation as any).updated_at 
-        ? new Date((quotation as any).updated_at)
-        : new Date();
+    // Determine issue date: created_at → updated_at → new Date()
+    const issueDate = quotation.created_at 
+      ? new Date(quotation.created_at)
+      : (quotation as any).updated_at 
+      ? new Date((quotation as any).updated_at)
+      : new Date();
 
-      // Convert quotation to QuotationFormData format
-      const quotationFormData = {
-        firma: quotation.firma,
-        ilgiliKisi: quotation.ilgili_kisi,
-        tel: quotation.tel,
-        email: quotation.email,
-        konu: quotation.konu,
-        products: products,
-        activeCurrency: quotation.active_currency,
-        notlar: quotation.notlar,
-        opsiyon: quotation.opsiyon,
-        teslimSuresi: quotation.teslim_suresi,
-        odemeSekli: quotation.odeme_sekli,
-        teslimYeri: quotation.teslim_yeri,
-      };
+    // Convert quotation to QuotationFormData format
+    const quotationFormData = {
+      firma: quotation.firma,
+      ilgiliKisi: quotation.ilgili_kisi,
+      tel: quotation.tel,
+      email: quotation.email,
+      konu: quotation.konu,
+      products: products,
+      activeCurrency: quotation.active_currency,
+      notlar: quotation.notlar,
+      opsiyon: quotation.opsiyon,
+      teslimSuresi: quotation.teslim_suresi,
+      odemeSekli: quotation.odeme_sekli,
+      teslimYeri: quotation.teslim_yeri,
+    };
 
-      // Create calculation functions based on quotation's products
-      const calculateRowTotal = (row: ProductRow) => row.miktar * row.birimFiyat;
-      const calculateSubtotal = () => products.reduce((sum: number, p: ProductRow) => sum + calculateRowTotal(p), 0);
-      const calculateKDV = () => calculateSubtotal() * 0.20;
-      const calculateTotal = () => calculateSubtotal() + calculateKDV();
-      const formatCurrency = (amount: number, currency = quotation.active_currency) => {
-        const symbols: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€" };
-        return `${symbols[currency] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      };
+    // Create calculation functions based on quotation's products
+    const calculateRowTotal = (row: ProductRow) => row.miktar * row.birimFiyat;
+    const calculateSubtotal = () => products.reduce((sum: number, p: ProductRow) => sum + calculateRowTotal(p), 0);
+    const calculateKDV = () => calculateSubtotal() * 0.20;
+    const calculateTotal = () => calculateSubtotal() + calculateKDV();
+    const formatCurrency = (amount: number, currency = quotation.active_currency) => {
+      const symbols: Record<string, string> = { TRY: "₺", USD: "$", EUR: "€" };
+      return `${symbols[currency] || "₺"}${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
 
-      // Use useQuotationPDF's preview function
-      const pdfBlob = await pdf.createPDFPreview(
-        quotation.teklif_no,
-        quotationFormData,
-        calculateRowTotal,
-        calculateSubtotal,
-        calculateKDV,
-        calculateTotal,
-        formatCurrency,
-        issueDate
-      );
-      
-      // Open preview in new window
-      const previewUrl = URL.createObjectURL(pdfBlob);
-      window.open(previewUrl, '_blank');
-      // Note: URL will be cleaned up when the window is closed or by the hook's cleanup
-    } catch (error) {
-      console.error("Preview error:", error);
-      toast({
-        title: "Hata",
-        description: "Teklif ön izlemesi oluşturulamadı.",
-        variant: "destructive",
-      });
-    }
+    // Use useQuotationPDF's preview function and return the Blob
+    const pdfBlob = await pdf.createPDFPreview(
+      quotation.teklif_no,
+      quotationFormData,
+      calculateRowTotal,
+      calculateSubtotal,
+      calculateKDV,
+      calculateTotal,
+      formatCurrency,
+      issueDate
+    );
+    
+    return pdfBlob;
   };
 
   // Recent Quotation Download Handler
