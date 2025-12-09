@@ -1,12 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, FileText, Loader2, Download, Search, Eye, X } from "lucide-react";
+import { ChevronDown, FileText, Loader2, Download, Search, Eye } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { ProductRow } from "../types";
-import { Worker, Viewer } from "@react-pdf-viewer/core";
-import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
-import "@react-pdf-viewer/core/lib/styles/index.css";
-import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 import { PdfPreviewModal } from "@/features/quotation/components/PdfPreviewModal";
 
 export interface QuotationRecord {
@@ -48,8 +44,6 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   // Fetch recent quotations when panel opens
   const fetchRecentQuotes = async () => {
