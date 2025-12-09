@@ -1,12 +1,32 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import * as pdfjsLib from "pdfjs-dist";
 import { Loader2 } from "lucide-react";
 
-// Configure PDF.js worker - use CDN matching installed version
+// Import pdfjs-dist
+import * as pdfjsLib from "pdfjs-dist";
+// Import worker using Vite's ?url suffix for proper bundling
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
+
+// Configure PDF.js worker - must be set before any PDF operations
 if (typeof window !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 }
 
+/**
+ * PDFViewer Component
+ * 
+ * Displays a PDF using pdf.js with support for:
+ * - Mobile gestures (pinch-to-zoom, swipe navigation, swipe-to-close)
+ * - Desktop zoom and navigation
+ * - Scroll-snap for one-page-per-viewport on mobile
+ * 
+ * API:
+ * - blob: Blob | null - The PDF blob to display. Must be a valid PDF Blob with type "application/pdf"
+ *   The blob will be converted to ArrayBuffer internally for pdf.js
+ * 
+ * Note: This component expects a Blob, not a URL. If you have a URL, create a Blob first:
+ *   const response = await fetch(url);
+ *   const blob = await response.blob();
+ */
 interface PDFViewerProps {
   blob: Blob | null;
   onClose?: () => void;
@@ -26,7 +46,7 @@ export function PDFViewer({
 }: PDFViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
-  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  const [pdfDoc, setPdfDoc] = useState<any>(null); // PDFDocumentProxy from pdfjs-dist
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1);
@@ -35,7 +55,8 @@ export function PDFViewer({
   const [error, setError] = useState<string | null>(null);
   const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
   const pageContainersRef = useRef<Map<number, HTMLDivElement>>(new Map());
-  const renderTasksRef = useRef<Map<number, pdfjsLib.RenderTask>>(new Map());
+  const renderTasksRef = useRef<Map<number, any>>(new Map()); // RenderTask from pdfjs-dist
+  const pdfDocRef = useRef<any>(null); // PDFDocumentProxy from pdfjs-dist
 
   // Touch gesture state
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -46,7 +67,7 @@ export function PDFViewer({
   const lastBlobRef = useRef<Blob | null>(null);
 
   // Calculate base scale to fit viewport
-  const calculateBaseScale = useCallback(async (pdf: pdfjsLib.PDFDocumentProxy) => {
+  const calculateBaseScale = useCallback(async (pdf: any) => {
     if (!pagesRef.current) return 1;
 
     const container = pagesRef.current;
@@ -67,7 +88,7 @@ export function PDFViewer({
     }
   }, []);
 
-  // Cleanup function
+  // Cleanup function - use ref to avoid dependency issues
   const cleanup = useCallback(() => {
     // Cancel all render tasks
     renderTasksRef.current.forEach((task) => {
@@ -83,15 +104,16 @@ export function PDFViewer({
     canvasRefs.current.clear();
     pageContainersRef.current.clear();
 
-    // Close PDF document
-    if (pdfDoc) {
+    // Close PDF document using ref
+    if (pdfDocRef.current) {
       try {
-        pdfDoc.destroy();
+        pdfDocRef.current.destroy();
       } catch (e) {
         // Ignore destroy errors
       }
+      pdfDocRef.current = null;
     }
-  }, [pdfDoc]);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -104,6 +126,7 @@ export function PDFViewer({
   useEffect(() => {
     if (!blob) {
       cleanup();
+      pdfDocRef.current = null;
       setPdfDoc(null);
       setNumPages(0);
       setCurrentPage(1);
@@ -132,17 +155,41 @@ export function PDFViewer({
 
     const loadPDF = async () => {
       try {
+        // Validate blob
+        if (!blob || blob.size === 0) {
+          throw new Error("Invalid or empty PDF blob");
+        }
+
+        if (blob.type && blob.type !== "application/pdf") {
+          console.warn("Blob type is not application/pdf:", blob.type);
+        }
+
         // Cleanup previous PDF
         cleanup();
 
         const arrayBuffer = await blob.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        
+        // Validate array buffer
+        if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+          throw new Error("Invalid PDF data");
+        }
+
+        const loadingTask = pdfjsLib.getDocument({ 
+          data: arrayBuffer,
+          verbosity: 0 // Reduce console noise
+        });
         const pdf = await loadingTask.promise;
+        
+        // Validate PDF document
+        if (!pdf || pdf.numPages === 0) {
+          throw new Error("Invalid PDF document");
+        }
         
         // Calculate base scale to fit viewport
         const fitScale = await calculateBaseScale(pdf);
         setBaseScale(fitScale);
         
+        pdfDocRef.current = pdf;
         setPdfDoc(pdf);
         setNumPages(pdf.numPages);
         setCurrentPage(1);
@@ -156,7 +203,11 @@ export function PDFViewer({
         }, 100);
       } catch (err) {
         console.error("Error loading PDF:", err);
-        setError("PDF yüklenemedi");
+        const errorMessage = err instanceof Error ? err.message : "PDF yüklenemedi";
+        setError(errorMessage);
+        pdfDocRef.current = null;
+        setPdfDoc(null);
+        setNumPages(0);
       } finally {
         setIsLoading(false);
       }

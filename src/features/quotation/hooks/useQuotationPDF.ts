@@ -85,13 +85,19 @@ export function useQuotationPDF() {
     try {
       const doc = await createQuotationPDF(teklifNo, formData, calculateRowTotal, calculateSubtotal, calculateKDV, calculateTotal, formatCurrencyFn, issueDate);
       const pdfOutput = doc.output("blob");
-      setPdfBlob(pdfOutput);
+      
+      // jsPDF's output("blob") returns a Blob, but ensure it has the correct MIME type
+      const pdfBlob = pdfOutput instanceof Blob && pdfOutput.type === "application/pdf"
+        ? pdfOutput 
+        : new Blob([pdfOutput], { type: "application/pdf" });
+      
+      setPdfBlob(pdfBlob);
 
-      const previewUrl = URL.createObjectURL(pdfOutput);
+      const previewUrl = URL.createObjectURL(pdfBlob);
       if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
       setPdfPreviewUrl(previewUrl);
 
-      return pdfOutput;
+      return pdfBlob;
     } catch (error) {
       console.error(error);
       toast({

@@ -14,5 +14,19 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    dedupe: ["pdfjs-dist"],
+  },
+  optimizeDeps: {
+    include: ["pdfjs-dist"],
+  },
+  build: {
+    commonjsOptions: {
+      include: [/pdfjs-dist/, /node_modules/],
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
 }));
