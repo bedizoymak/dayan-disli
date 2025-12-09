@@ -39,6 +39,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
   const [recreatingId, setRecreatingId] = useState<string | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [visibleCount, setVisibleCount] = useState(5);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Fetch recent quotations when panel opens
@@ -46,13 +47,13 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("quotations" as any)
+        .from<QuotationRecord>("quotations")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(1000); // High limit to fetch all quotations while preventing performance issues
+        .limit(1000);
 
       if (error) throw error;
-      setRecentQuotes((data as QuotationRecord[]) || []);
+      setRecentQuotes(data || []);
     } catch (error) {
       console.error("Failed to fetch recent quotations:", error);
       toast({
@@ -65,7 +66,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     }
   };
 
-  // Close panel and reset
+  // Close panel
   const closePanel = () => {
     setPanelOpen(false);
   };
@@ -79,6 +80,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
       if (recentQuotes.length === 0) {
         fetchRecentQuotes();
       }
+      setVisibleCount(5);
       onPanelOpen?.();
     }
   };
@@ -88,10 +90,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     const handleClickOutside = (event: MouseEvent) => {
       if (!panelOpen) return;
 
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(event.target as Node)
-      ) {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
         closePanel();
       }
     };
@@ -102,49 +101,39 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     };
   }, [panelOpen]);
 
-  // Handle download via parent callback
   const handleRecreatePDF = async (quote: QuotationRecord) => {
     if (!onDownload) return;
     
     setRecreatingId(quote.teklif_no);
-    try {
-      await onDownload(quote);
-    } catch (error) {
-      // Error already handled in parent
-    } finally {
-      setRecreatingId(null);
-    }
+    try { await onDownload(quote); } catch {}
+    finally { setRecreatingId(null); }
   };
 
-  // Handle preview via parent callback
   const handlePreviewPDF = async (quote: QuotationRecord) => {
     if (!onPreview) return;
-    
+
     setPreviewingId(quote.teklif_no);
-    try {
-      await onPreview(quote);
-    } catch (error) {
-      // Error already handled in parent
-    } finally {
-      setPreviewingId(null);
-    }
+    try { await onPreview(quote); } catch {}
+    finally { setPreviewingId(null); }
   };
 
-  // Filter quotations by firma name
   const filteredQuotes = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return recentQuotes;
-    }
+    if (!searchTerm.trim()) return recentQuotes;
     return recentQuotes.filter(q => 
       q.firma?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [recentQuotes, searchTerm]);
 
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-  };
+  // Reset visible count when search changes
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [searchTerm]);
 
-  // Format date for display
+  // Visible subset
+  const visibleQuotes = useMemo(() => {
+    return filteredQuotes.slice(0, visibleCount);
+  }, [filteredQuotes, visibleCount]);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("tr-TR", {
@@ -184,6 +173,7 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
         }`}
       >
         <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg overflow-hidden">
+
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
@@ -203,90 +193,95 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
                     type="text"
                     placeholder="Firma adı ile ara..."
                     value={searchTerm}
-                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 bg-slate-900/50 border border-slate-700/50 rounded-md text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-colors"
                   />
                 </div>
               </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-700/50 bg-slate-900/50">
-                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                        Teklif No
-                      </th>
-                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                        Firma
-                      </th>
-                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                        Oluşturma Tarihi
-                      </th>
-                      <th className="text-center px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                        İndir
-                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Teklif No</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Firma</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Oluşturma Tarihi</th>
+                      <th className="text-center px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">İndir</th>
                     </tr>
                   </thead>
+
                   <tbody className="divide-y divide-slate-700/30">
-                    {filteredQuotes.length === 0 ? (
+                    {visibleQuotes.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="text-center py-8 text-slate-500">
                           Arama sonucu bulunamadı.
                         </td>
                       </tr>
                     ) : (
-                      filteredQuotes.map((quote) => (
-                    <tr 
-                      key={quote.id}
-                      className="hover:bg-slate-700/20 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <span className="text-blue-400 font-medium">
-                          {quote.teklif_no}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-300 text-sm">
-                        {quote.firma}
-                      </td>
-                      <td className="px-4 py-3 text-slate-400 text-sm">
-                        {formatDate(quote.created_at)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handlePreviewPDF(quote)}
-                            disabled={!onPreview || previewingId === quote.teklif_no}
-                            title="Ön İzleme"
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {previewingId === quote.teklif_no ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleRecreatePDF(quote)}
-                            disabled={!onDownload || recreatingId === quote.teklif_no}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {recreatingId === quote.teklif_no ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Download className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      visibleQuotes.map((quote) => (
+                        <tr key={quote.id} className="hover:bg-slate-700/20 transition-colors">
+                          <td className="px-4 py-3">
+                            <span className="text-blue-400 font-medium">
+                              {quote.teklif_no}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-300 text-sm">
+                            {quote.firma}
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">
+                            {formatDate(quote.created_at)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handlePreviewPDF(quote)}
+                                disabled={!onPreview || previewingId === quote.teklif_no}
+                                title="Ön İzleme"
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {previewingId === quote.teklif_no ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleRecreatePDF(quote)}
+                                disabled={!onDownload || recreatingId === quote.teklif_no}
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {recreatingId === quote.teklif_no ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Download className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       ))
                     )}
                   </tbody>
                 </table>
               </div>
+
+              {/* Load More Button */}
+              <div className="px-4 py-3 border-t border-slate-700/50 flex justify-center">
+                <button
+                  onClick={() => setVisibleCount(prev => prev + 5)}
+                  disabled={visibleCount >= filteredQuotes.length}
+                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700/70 border border-slate-600/50 rounded-md text-sm text-slate-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-700/50"
+                >
+                  Daha Fazla Göster
+                </button>
+              </div>
+
             </>
           )}
+
         </div>
       </div>
     </div>
   );
 }
+//test
