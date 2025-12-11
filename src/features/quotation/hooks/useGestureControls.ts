@@ -10,7 +10,7 @@ interface GestureOptions {
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const SWIPE_DISTANCE = 50;
-const SWIPE_TIME = 400; // ms
+const SWIPE_TIME = 400;
 
 export function useGestureControls({
   containerRef,
@@ -18,26 +18,12 @@ export function useGestureControls({
   onNext,
   onPrev,
 }: GestureOptions) {
-  // Visible state
   const [scale, setScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
-  // Internal refs - use refs to avoid dependency on React state in event handlers
   const scaleRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
-
-  // Store callbacks in refs to prevent event listener reattachment
-  const onCloseRef = useRef(onClose);
-  const onNextRef = useRef(onNext);
-  const onPrevRef = useRef(onPrev);
-
-  // Update callback refs when they change
-  useEffect(() => {
-    onCloseRef.current = onClose;
-    onNextRef.current = onNext;
-    onPrevRef.current = onPrev;
-  }, [onClose, onNext, onPrev]);
 
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
@@ -71,121 +57,90 @@ export function useGestureControls({
       const touch = e.touches[0];
       const now = Date.now();
 
-      touchStartRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-        time: now,
-      };
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: now };
       lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
       touchMoveRef.current = null;
     } else if (e.touches.length === 2) {
       e.preventDefault();
       const [t1, t2] = [e.touches[0], e.touches[1]];
-      const distance = Math.hypot(
-        t2.clientX - t1.clientX,
-        t2.clientY - t1.clientY
-      );
+      const distance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
 
-      pinchStartRef.current = {
-        distance,
-        scale: scaleRef.current,
-      };
+      pinchStartRef.current = { distance, scale: scaleRef.current };
       isZoomingRef.current = true;
       setIsPinching(true);
     }
   }, []);
 
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (isZoomingRef.current && e.touches.length === 2) {
-      e.preventDefault();
-      e.stopPropagation();
-      const [t1, t2] = [e.touches[0], e.touches[1]];
-      const distance = Math.hypot(
-        t2.clientX - t1.clientX,
-        t2.clientY - t1.clientY
-      );
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (isZoomingRef.current && e.touches.length === 2) {
+        e.preventDefault();
+        const [t1, t2] = [e.touches[0], e.touches[1]];
+        const distance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
 
-      if (pinchStartRef.current) {
-        const scaleChange = distance / pinchStartRef.current.distance;
-        const newScale = pinchStartRef.current.scale * scaleChange;
-        updateScale(newScale);
-      }
-      return;
-    }
-
-    if (e.touches.length === 1 && touchStartRef.current) {
-      const touch = e.touches[0];
-      const deltaX = touch.clientX - touchStartRef.current.x;
-      const deltaY = touch.clientY - touchStartRef.current.y;
-
-      touchMoveRef.current = { x: touch.clientX, y: touch.clientY };
-
-      if (scaleRef.current === 1) {
-        // Horizontal swipe navigation when not zoomed
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-          e.preventDefault();
+        if (pinchStartRef.current) {
+          const scaleFactor = distance / pinchStartRef.current.distance;
+          const newScale = pinchStartRef.current.scale * scaleFactor;
+          updateScale(newScale);
         }
         return;
       }
 
-      // Pan when zoomed
-      if (scaleRef.current > 1 && lastTouchRef.current) {
-        e.preventDefault();
-        const moveDx = touch.clientX - lastTouchRef.current.x;
-        const moveDy = touch.clientY - lastTouchRef.current.y;
-        lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
-        updateOffset(moveDx, moveDy);
+      if (e.touches.length === 1 && touchStartRef.current) {
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchStartRef.current.x;
+        const dy = touch.clientY - touchStartRef.current.y;
+
+        touchMoveRef.current = { x: touch.clientX, y: touch.clientY };
+
+        if (scaleRef.current === 1) return;
+
+        if (lastTouchRef.current) {
+          e.preventDefault();
+          const moveDx = touch.clientX - lastTouchRef.current.x;
+          const moveDy = touch.clientY - lastTouchRef.current.y;
+          lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+          updateOffset(moveDx, moveDy);
+        }
       }
-    }
-  }, [updateScale, updateOffset]);
+    },
+    [updateScale, updateOffset]
+  );
 
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    if (isZoomingRef.current) {
-      isZoomingRef.current = false;
-      pinchStartRef.current = null;
-      setIsPinching(false);
-      return;
-    }
+  const handleTouchEnd = useCallback(
+    (e: TouchEvent) => {
+      if (isZoomingRef.current) {
+        isZoomingRef.current = false;
+        pinchStartRef.current = null;
+        setIsPinching(false);
+      }
 
-    if (!touchStartRef.current || !touchMoveRef.current) {
+      if (!touchStartRef.current || !touchMoveRef.current) {
+        touchStartRef.current = null;
+        touchMoveRef.current = null;
+        lastTouchRef.current = null;
+        return;
+      }
+
+      const dx = touchMoveRef.current.x - touchStartRef.current.x;
+      const dy = touchMoveRef.current.y - touchStartRef.current.y;
+      const dt = Date.now() - touchStartRef.current.time;
+
+      if (scaleRef.current === 1 && dt < SWIPE_TIME) {
+        if (Math.abs(dx) > SWIPE_DISTANCE) {
+          if (dx > 0) onPrev();
+          else onNext();
+        } else if (Math.abs(dy) > SWIPE_DISTANCE) {
+          if (dy < 0) onClose();
+        }
+      }
+
       touchStartRef.current = null;
       touchMoveRef.current = null;
       lastTouchRef.current = null;
-      return;
-    }
-
-    const deltaX = touchMoveRef.current.x - touchStartRef.current.x;
-    const deltaY = touchMoveRef.current.y - touchStartRef.current.y;
-    const deltaTime = Date.now() - touchStartRef.current.time;
-
-    const absDeltaX = Math.abs(deltaX);
-    const absDeltaY = Math.abs(deltaY);
-
-    // Swipe detection only when scale === 1
-    if (
-      scaleRef.current === 1 &&
-      deltaTime < SWIPE_TIME &&
-      (absDeltaX > SWIPE_DISTANCE || absDeltaY > SWIPE_DISTANCE)
-    ) {
-      if (absDeltaX > absDeltaY) {
-        // Horizontal swipe → navigation
-        if (deltaX > SWIPE_DISTANCE) {
-          onPrevRef.current();
-        } else if (deltaX < -SWIPE_DISTANCE) {
-          onNextRef.current();
-        }
-      } else {
-        // Vertical swipe → close (swipe up)
-        if (deltaY < -SWIPE_DISTANCE) {
-          onCloseRef.current();
-        }
-      }
-    }
-
-    touchStartRef.current = null;
-    touchMoveRef.current = null;
-    lastTouchRef.current = null;
-  }, []);
+    },
+    [onClose, onNext, onPrev]
+  );
 
   const handleTouchCancel = useCallback(() => {
     isZoomingRef.current = false;
@@ -196,28 +151,27 @@ export function useGestureControls({
     setIsPinching(false);
   }, []);
 
-  // Attach touch event listeners - stable dependencies, only attach once
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const el = containerRef.current;
+    if (!el) return;
 
-    container.addEventListener("touchstart", handleTouchStart, { passive: false });
-    container.addEventListener("touchmove", handleTouchMove, { passive: false });
-    container.addEventListener("touchend", handleTouchEnd);
-    container.addEventListener("touchcancel", handleTouchCancel);
+    el.addEventListener("touchstart", handleTouchStart, { passive: false });
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    el.addEventListener("touchend", handleTouchEnd);
+    el.addEventListener("touchcancel", handleTouchCancel);
 
     return () => {
-      container.removeEventListener("touchstart", handleTouchStart);
-      container.removeEventListener("touchmove", handleTouchMove);
-      container.removeEventListener("touchend", handleTouchEnd);
-      container.removeEventListener("touchcancel", handleTouchCancel);
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+      el.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("touchcancel", handleTouchCancel);
     };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel]);
+  }, [containerRef, handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel]);
 
   return {
     scale,
-    isPinching,
     offset,
+    isPinching,
     resetScale: resetScaleAndOffset,
   };
 }

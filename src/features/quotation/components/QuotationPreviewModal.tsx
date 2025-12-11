@@ -102,10 +102,7 @@ export function QuotationPreviewModal({
   // Reset scale and offset when preview opens
   useEffect(() => {
     if (open) {
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        resetScale();
-      });
+      resetScale();
     }
   }, [open, resetScale]);
 
