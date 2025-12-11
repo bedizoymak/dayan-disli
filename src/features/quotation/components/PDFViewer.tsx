@@ -34,6 +34,7 @@ interface PDFViewerProps {
   onNavigateRight?: () => void;
   canNavigateLeft?: boolean;
   canNavigateRight?: boolean;
+  suppressLoading?: boolean; // Suppress loading screen during transitions
 }
 
 export function PDFViewer({
@@ -43,6 +44,7 @@ export function PDFViewer({
   onNavigateRight,
   canNavigateLeft = false,
   canNavigateRight = false,
+  suppressLoading = false,
 }: PDFViewerProps) {
   const pagesRef = useRef<HTMLDivElement>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null); // PDFDocumentProxy from pdfjs-dist
@@ -331,7 +333,7 @@ export function PDFViewer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  if (isLoading) {
+  if (isLoading && !suppressLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center text-slate-400">
         <Loader2 className="w-8 h-8 animate-spin mr-3" />
