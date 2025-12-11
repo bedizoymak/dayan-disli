@@ -5,33 +5,42 @@ interface GestureOptions {
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
+  onDragXChange?: (dragX: number) => void;
+  onSwipeEnd?: (velocity: number, distance: number, direction: "left" | "right" | null) => void;
 }
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const SWIPE_DISTANCE = 50;
 const SWIPE_TIME = 400;
+const SWIPE_VELOCITY_THRESHOLD = 0.35; // px/ms
 
 export function useGestureControls({
   containerRef,
   onClose,
   onNext,
   onPrev,
+  onDragXChange,
+  onSwipeEnd,
 }: GestureOptions) {
   // Visible state
   const [scale, setScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Internal refs (never read React state directly in handlers)
   const scaleRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
+  const dragXRef = useRef(0);
 
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
   const touchMoveRef = useRef<{ x: number; y: number } | null>(null);
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
   const isZoomingRef = useRef(false);
+  const isDraggingRef = useRef(false);
 
   const updateScale = useCallback((next: number) => {
     const clamped = Math.max(MIN_SCALE, Math.min(MAX_SCALE, next));
@@ -46,12 +55,22 @@ export function useGestureControls({
     setOffset(next);
   }, []);
 
+  const updateDragX = useCallback((x: number) => {
+    dragXRef.current = x;
+    setDragX(x);
+    onDragXChange?.(x);
+  }, [onDragXChange]);
+
   const resetScaleAndOffset = useCallback(() => {
     scaleRef.current = 1;
     offsetRef.current = { x: 0, y: 0 };
+    dragXRef.current = 0;
     setScale(1);
     setOffset({ x: 0, y: 0 });
+    setDragX(0);
     setIsPinching(false);
+    setIsDragging(false);
+    isDraggingRef.current = false;
   }, []);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
@@ -62,6 +81,13 @@ export function useGestureControls({
       touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: now };
       lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
       touchMoveRef.current = null;
+      
+      // Reset drag state
+      if (scaleRef.current === 1) {
+        isDraggingRef.current = false;
+        updateDragX(0);
+        setIsDragging(false);
+      }
     } else if (e.touches.length === 2) {
       // Start pinch zoom
       e.preventDefault();
@@ -71,8 +97,13 @@ export function useGestureControls({
       pinchStartRef.current = { distance, scale: scaleRef.current };
       isZoomingRef.current = true;
       setIsPinching(true);
+      
+      // Cancel drag if zooming
+      isDraggingRef.current = false;
+      updateDragX(0);
+      setIsDragging(false);
     }
-  }, []);
+  }, [updateDragX]);
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
@@ -99,11 +130,24 @@ export function useGestureControls({
 
         touchMoveRef.current = { x: touch.clientX, y: touch.clientY };
 
-        // When NOT zoomed: only hint horizontal navigation, don't pan
+        // When NOT zoomed: track horizontal drag for iOS-style navigation
         if (scaleRef.current === 1) {
-          // If clearly horizontal, prevent native scroll to make swipe feel crisp
+          // If clearly horizontal, prevent native scroll and track drag
           if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
             e.preventDefault();
+            e.stopPropagation();
+            
+            // Start dragging if not already
+            if (!isDraggingRef.current) {
+              isDraggingRef.current = true;
+              setIsDragging(true);
+            }
+            
+            // Update dragX to follow finger exactly
+            updateDragX(dx);
+          } else if (isDraggingRef.current) {
+            // Continue tracking if already dragging
+            updateDragX(dx);
           }
           return;
         }
@@ -118,7 +162,7 @@ export function useGestureControls({
         }
       }
     },
-    [updateScale, updateOffset]
+    [updateScale, updateOffset, updateDragX]
   );
 
   const handleTouchEnd = useCallback(
@@ -129,36 +173,60 @@ export function useGestureControls({
         setIsPinching(false);
       }
 
-      if (!touchStartRef.current || !touchMoveRef.current) {
-        touchStartRef.current = null;
-        touchMoveRef.current = null;
-        lastTouchRef.current = null;
-        return;
-      }
+      // Handle drag end for iOS-style transitions
+      if (isDraggingRef.current && scaleRef.current === 1 && touchStartRef.current && touchMoveRef.current) {
+        const dx = touchMoveRef.current.x - touchStartRef.current.x;
+        const dy = touchMoveRef.current.y - touchStartRef.current.y;
+        const dt = Date.now() - touchStartRef.current.time;
+        const velocity = dt > 0 ? Math.abs(dx) / dt : 0;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
 
-      const dx = touchMoveRef.current.x - touchStartRef.current.x;
-      const dy = touchMoveRef.current.y - touchStartRef.current.y;
-      const dt = Date.now() - touchStartRef.current.time;
-
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-
-      // Swipe gestures only when NOT zoomed
-      if (
-        scaleRef.current === 1 &&
-        dt < SWIPE_TIME &&
-        (absDx > SWIPE_DISTANCE || absDy > SWIPE_DISTANCE)
-      ) {
+        // Determine direction
+        let direction: "left" | "right" | null = null;
         if (absDx > absDy) {
-          // Horizontal swipe -> navigation
-          if (dx > SWIPE_DISTANCE) {
-            onPrev();
-          } else if (dx < -SWIPE_DISTANCE) {
-            onNext();
-          }
+          direction = dx > 0 ? "right" : "left";
+        }
+
+        // Call onSwipeEnd with velocity and distance for iOS-style decision
+        if (onSwipeEnd) {
+          onSwipeEnd(velocity, dx, direction);
         } else {
-          // Vertical swipe up -> close
-          if (dy < -SWIPE_DISTANCE) {
+          // Fallback to old behavior if onSwipeEnd not provided
+          if (dt < SWIPE_TIME && (absDx > SWIPE_DISTANCE || absDy > SWIPE_DISTANCE)) {
+            if (absDx > absDy) {
+              if (dx > SWIPE_DISTANCE) {
+                onPrev();
+              } else if (dx < -SWIPE_DISTANCE) {
+                onNext();
+              }
+            } else {
+              if (dy < -SWIPE_DISTANCE) {
+                onClose();
+              }
+            }
+          }
+        }
+
+        // Reset drag state (will be handled by parent if commit/cancel)
+        isDraggingRef.current = false;
+        setIsDragging(false);
+      } else if (!touchStartRef.current || !touchMoveRef.current) {
+        // No drag, check for vertical swipe to close
+        if (touchStartRef.current && touchMoveRef.current) {
+          const dx = touchMoveRef.current.x - touchStartRef.current.x;
+          const dy = touchMoveRef.current.y - touchStartRef.current.y;
+          const dt = Date.now() - (touchStartRef.current?.time || Date.now());
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+
+          if (
+            scaleRef.current === 1 &&
+            dt < SWIPE_TIME &&
+            absDy > absDx &&
+            absDy > SWIPE_DISTANCE &&
+            dy < -SWIPE_DISTANCE
+          ) {
             onClose();
           }
         }
@@ -168,7 +236,7 @@ export function useGestureControls({
       touchMoveRef.current = null;
       lastTouchRef.current = null;
     },
-    [onClose, onNext, onPrev]
+    [onClose, onNext, onPrev, onSwipeEnd]
   );
 
   const handleTouchCancel = useCallback(() => {
@@ -178,7 +246,12 @@ export function useGestureControls({
     touchMoveRef.current = null;
     lastTouchRef.current = null;
     setIsPinching(false);
-  }, []);
+    
+    // Cancel drag
+    isDraggingRef.current = false;
+    updateDragX(0);
+    setIsDragging(false);
+  }, [updateDragX]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -201,6 +274,8 @@ export function useGestureControls({
     scale,
     offset,
     isPinching,
+    dragX,
+    isDragging,
     resetScale: resetScaleAndOffset,
   };
 }

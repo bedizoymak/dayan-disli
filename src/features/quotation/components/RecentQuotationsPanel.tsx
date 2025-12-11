@@ -277,6 +277,37 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
     }
   };
 
+  // Preview functions for iOS-style drag preview (don't update state)
+  const handlePreviewLeft = async (): Promise<Blob | null> => {
+    if (previewQuoteIndex <= 0 || !onPreview) return null;
+    
+    try {
+      const prevQuote = getPreviousQuotation(previewQuoteIndex);
+      if (!prevQuote) return null;
+      
+      const blob = await onPreview(prevQuote);
+      return blob;
+    } catch (error) {
+      console.error("Failed to preview previous quote:", error);
+      return null;
+    }
+  };
+
+  const handlePreviewRight = async (): Promise<Blob | null> => {
+    if (previewQuoteIndex >= filteredQuotes.length - 1 || !onPreview) return null;
+    
+    try {
+      const nextQuote = getNextQuotation(previewQuoteIndex);
+      if (!nextQuote) return null;
+      
+      const blob = await onPreview(nextQuote);
+      return blob;
+    } catch (error) {
+      console.error("Failed to preview next quote:", error);
+      return null;
+    }
+  };
+
   const handleDownloadFromPreview = () => {
     if (!previewQuote || !onDownload) return;
 
@@ -466,11 +497,11 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
         onDownload={handleDownloadFromPreview}
         onNavigateLeft={handleNavigateLeft}
         onNavigateRight={handleNavigateRight}
+        onPreviewLeft={handlePreviewLeft}
+        onPreviewRight={handlePreviewRight}
         canNavigateLeft={previewQuoteIndex > 0}
         canNavigateRight={previewQuoteIndex >= 0 && previewQuoteIndex < filteredQuotes.length - 1}
         isNavigating={isNavigating}
-        onNext={handleNavigateRight}
-        onPrev={handleNavigateLeft}
       />
     </div>
   );
