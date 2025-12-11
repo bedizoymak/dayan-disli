@@ -44,12 +44,10 @@ export function PDFViewer({
   canNavigateLeft = false,
   canNavigateRight = false,
 }: PDFViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null); // PDFDocumentProxy from pdfjs-dist
   const [numPages, setNumPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [scale, setScale] = useState(1);
   const [baseScale, setBaseScale] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,13 +55,6 @@ export function PDFViewer({
   const pageContainersRef = useRef<Map<number, HTMLDivElement>>(new Map());
   const renderTasksRef = useRef<Map<number, any>>(new Map()); // RenderTask from pdfjs-dist
   const pdfDocRef = useRef<any>(null); // PDFDocumentProxy from pdfjs-dist
-
-  // Touch gesture state
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const touchMoveRef = useRef<{ x: number; y: number } | null>(null);
-  const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
-  const isZoomingRef = useRef(false);
-  const isNavigatingRef = useRef(false);
   const lastBlobRef = useRef<Blob | null>(null);
 
   // Calculate base scale to fit viewport
@@ -131,7 +122,6 @@ export function PDFViewer({
       setNumPages(0);
       setCurrentPage(1);
       setBaseScale(1);
-      setScale(1);
       lastBlobRef.current = null;
       // Reset scroll position
       if (pagesRef.current) {
@@ -140,9 +130,8 @@ export function PDFViewer({
       return;
     }
 
-    // Reset scale and scroll when blob changes
+    // Reset scroll when blob changes
     if (lastBlobRef.current !== blob) {
-      setScale(1);
       lastBlobRef.current = blob;
       // Reset scroll position
       if (pagesRef.current) {
@@ -193,7 +182,6 @@ export function PDFViewer({
         setPdfDoc(pdf);
         setNumPages(pdf.numPages);
         setCurrentPage(1);
-        setScale(1);
         
         // Reset scroll position after a brief delay to ensure DOM is ready
         setTimeout(() => {
@@ -238,8 +226,8 @@ export function PDFViewer({
 
         const page = await pdfDoc.getPage(pageNum);
         
-        // Calculate final scale: baseScale fits viewport, scale is user zoom (1-4)
-        const finalScale = baseScale * scale;
+        // Calculate final scale: baseScale fits viewport (zoom is handled by parent transform)
+        const finalScale = baseScale;
         const viewport = page.getViewport({ scale: finalScale * window.devicePixelRatio });
 
         // Set canvas size
@@ -276,7 +264,7 @@ export function PDFViewer({
         renderTasksRef.current.delete(pageNum);
       }
     },
-    [pdfDoc, baseScale, scale]
+    [pdfDoc, baseScale]
   );
 
   // Recalculate base scale on resize
@@ -298,7 +286,7 @@ export function PDFViewer({
     };
   }, [pdfDoc, calculateBaseScale]);
 
-  // Render all pages when PDF, baseScale, or scale changes
+  // Render all pages when PDF or baseScale changes
   useEffect(() => {
     if (!pdfDoc || numPages === 0 || baseScale === 0) return;
 
@@ -309,143 +297,13 @@ export function PDFViewer({
     };
 
     renderAll();
-  }, [pdfDoc, numPages, baseScale, scale, renderPage]);
+  }, [pdfDoc, numPages, baseScale, renderPage]);
 
-  // Touch event handlers
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 1) {
-      // Single touch - prepare for swipe
-      const touch = e.touches[0];
-      touchStartRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-        time: Date.now(),
-      };
-      touchMoveRef.current = null;
-      isNavigatingRef.current = false;
-    } else if (e.touches.length === 2) {
-      // Two touches - prepare for pinch
-      e.preventDefault();
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(
-        touch2.clientX - touch1.clientX,
-        touch2.clientY - touch1.clientY
-      );
-      pinchStartRef.current = {
-        distance,
-        scale: scale, // User zoom scale (1-4)
-      };
-      isZoomingRef.current = true;
-    }
-  }, [scale]);
-
-  const handleTouchMove = useCallback(
-    (e: TouchEvent) => {
-      if (isZoomingRef.current && e.touches.length === 2) {
-        // Pinch zoom
-        e.preventDefault();
-        e.stopPropagation();
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        const distance = Math.hypot(
-          touch2.clientX - touch1.clientX,
-          touch2.clientY - touch1.clientY
-        );
-
-        if (pinchStartRef.current) {
-          const scaleChange = distance / pinchStartRef.current.distance;
-          const newScale = Math.max(1, Math.min(4, pinchStartRef.current.scale * scaleChange));
-          setScale(newScale); // Update user zoom scale (1-4)
-        }
-      } else if (e.touches.length === 1 && touchStartRef.current && scale === 1) {
-        // Single touch swipe (only when not zoomed)
-        const touch = e.touches[0];
-        const deltaX = touch.clientX - touchStartRef.current.x;
-        const deltaY = touch.clientY - touchStartRef.current.y;
-        
-        // Only prevent default if it's a horizontal swipe (for navigation)
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-          e.preventDefault();
-        }
-        
-        touchMoveRef.current = {
-          x: touch.clientX,
-          y: touch.clientY,
-        };
-      }
-    },
-    [scale]
-  );
-
-  const handleTouchEnd = useCallback(
-    (e: TouchEvent) => {
-      if (isZoomingRef.current) {
-        isZoomingRef.current = false;
-        pinchStartRef.current = null;
-        return;
-      }
-
-      if (!touchStartRef.current || !touchMoveRef.current) {
-        touchStartRef.current = null;
-        touchMoveRef.current = null;
-        return;
-      }
-
-      const deltaX = touchMoveRef.current.x - touchStartRef.current.x;
-      const deltaY = touchMoveRef.current.y - touchStartRef.current.y;
-      const deltaTime = Date.now() - touchStartRef.current.time;
-      const absDeltaX = Math.abs(deltaX);
-      const absDeltaY = Math.abs(deltaY);
-
-      // Swipe detection (minimum 50px movement, max 300ms)
-      if (deltaTime < 300 && (absDeltaX > 50 || absDeltaY > 50)) {
-        if (absDeltaX > absDeltaY) {
-          // Horizontal swipe
-          if (deltaX > 50 && canNavigateLeft && onNavigateLeft) {
-            // Swipe right - go to older quotation
-            onNavigateLeft();
-            isNavigatingRef.current = true;
-          } else if (deltaX < -50 && canNavigateRight && onNavigateRight) {
-            // Swipe left - go to newer quotation
-            onNavigateRight();
-            isNavigatingRef.current = true;
-          }
-        } else {
-          // Vertical swipe
-          if (deltaY < -50 && absDeltaY > absDeltaX && onClose) {
-            // Swipe up - close modal (only if vertical movement is dominant)
-            onClose();
-          }
-        }
-      }
-
-      touchStartRef.current = null;
-      touchMoveRef.current = null;
-    },
-    [onClose, onNavigateLeft, onNavigateRight, canNavigateLeft, canNavigateRight]
-  );
-
-  // Attach touch event listeners
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    container.addEventListener("touchstart", handleTouchStart, { passive: false });
-    container.addEventListener("touchmove", handleTouchMove, { passive: false });
-    container.addEventListener("touchend", handleTouchEnd);
-
-    return () => {
-      container.removeEventListener("touchstart", handleTouchStart);
-      container.removeEventListener("touchmove", handleTouchMove);
-      container.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   // Handle scroll to detect page changes
   useEffect(() => {
     const pagesContainer = pagesRef.current;
-    if (!pagesContainer || scale !== 1) return;
+    if (!pagesContainer) return;
 
     const handleScroll = () => {
       const scrollTop = pagesContainer.scrollTop;
@@ -459,7 +317,7 @@ export function PDFViewer({
     // Use passive listener for better performance
     pagesContainer.addEventListener("scroll", handleScroll, { passive: true });
     return () => pagesContainer.removeEventListener("scroll", handleScroll);
-  }, [scale, currentPage, numPages]);
+  }, [currentPage, numPages]);
 
   // Keyboard handler for ESC
   useEffect(() => {
@@ -499,17 +357,13 @@ export function PDFViewer({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-hidden relative bg-slate-900"
-      style={{ touchAction: scale === 1 ? "pan-y" : "none" }}
-    >
+    <div className="w-full h-full overflow-hidden relative bg-slate-900">
       {/* Pages container with scroll-snap */}
       <div
         ref={pagesRef}
         className="w-full h-full overflow-y-auto overflow-x-hidden"
         style={{
-          scrollSnapType: scale === 1 ? "y mandatory" : "none",
+          scrollSnapType: "y mandatory",
           scrollBehavior: "smooth",
           WebkitOverflowScrolling: "touch", // Smooth scrolling on iOS
         }}
@@ -524,11 +378,10 @@ export function PDFViewer({
               }}
               className="flex items-center justify-center w-full"
               style={{
-                height: scale === 1 ? "100vh" : "auto",
-                minHeight: scale === 1 ? "100vh" : "auto",
-                scrollSnapAlign: scale === 1 ? "start" : "none",
-                scrollSnapStop: scale === 1 ? "always" : "none",
-                padding: scale > 1 ? "20px" : "0",
+                height: "100vh",
+                minHeight: "100vh",
+                scrollSnapAlign: "start",
+                scrollSnapStop: "always",
               }}
             >
               <canvas
@@ -537,13 +390,11 @@ export function PDFViewer({
                 }}
                 className="block"
                 style={{
-                  maxWidth: scale === 1 ? "100%" : "none",
-                  maxHeight: scale === 1 ? "100%" : "none",
-                  width: scale === 1 ? "100%" : "auto",
-                  height: scale === 1 ? "100%" : "auto",
-                  objectFit: scale === 1 ? "contain" : "none",
-                  transform: scale > 1 ? `scale(${scale})` : "none",
-                  transformOrigin: "center top",
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
                 }}
               />
             </div>
@@ -555,13 +406,6 @@ export function PDFViewer({
       {numPages > 1 && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800/80 text-white px-3 py-1 rounded-full text-sm">
           {currentPage} / {numPages}
-        </div>
-      )}
-
-      {/* Zoom indicator */}
-      {scale > 1 && (
-        <div className="absolute top-4 right-4 bg-slate-800/80 text-white px-3 py-1 rounded-full text-sm">
-          {Math.round(scale * 100)}%
         </div>
       )}
     </div>

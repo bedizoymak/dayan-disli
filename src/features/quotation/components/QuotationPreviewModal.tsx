@@ -44,7 +44,7 @@ export function QuotationPreviewModal({
   };
 
   // Gesture controls
-  const { scale, isPinching, resetScale } = useGestureControls({
+  const { scale, offset, isPinching, resetScale } = useGestureControls({
     containerRef: viewerRef,
     onClose: handleClose,
     onNext: () => {
@@ -99,9 +99,9 @@ export function QuotationPreviewModal({
     }
   };
 
-  // Reset scale when PDF changes or modal closes
+  // Reset scale and offset when preview opens, PDF changes, or modal closes
   useEffect(() => {
-    if (!open) {
+    if (open) {
       resetScale();
     }
   }, [open, resetScale]);
@@ -167,12 +167,11 @@ export function QuotationPreviewModal({
         <div className={`flex-1 min-h-0 overflow-hidden relative transition-all duration-300 ease-in-out ${transitionClass}`}>
           <div
             ref={viewerRef}
-            className="w-full h-full overflow-auto"
+            className="relative touch-none overflow-hidden w-full h-full"
             style={{
-              transform: `scale(${scale})`,
+              transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
               transformOrigin: "center center",
-              transition: isPinching ? "none" : "transform 0.1s ease-out",
-              touchAction: scale === 1 ? "pan-y" : "pan-x pan-y pinch-zoom",
+              transition: isPinching ? "none" : "transform 0.12s ease-out",
             }}
           >
             <PDFViewer
