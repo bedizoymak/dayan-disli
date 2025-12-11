@@ -27,6 +27,18 @@ export function useGestureControls({
   const scaleRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
 
+  // Store callbacks in refs to prevent event listener reattachment
+  const onCloseRef = useRef(onClose);
+  const onNextRef = useRef(onNext);
+  const onPrevRef = useRef(onPrev);
+
+  // Update callback refs when they change
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    onNextRef.current = onNext;
+    onPrevRef.current = onPrev;
+  }, [onClose, onNext, onPrev]);
+
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
   const touchMoveRef = useRef<{ x: number; y: number } | null>(null);
@@ -132,6 +144,7 @@ export function useGestureControls({
       isZoomingRef.current = false;
       pinchStartRef.current = null;
       setIsPinching(false);
+      return;
     }
 
     if (!touchStartRef.current || !touchMoveRef.current) {
@@ -148,6 +161,7 @@ export function useGestureControls({
     const absDeltaX = Math.abs(deltaX);
     const absDeltaY = Math.abs(deltaY);
 
+    // Swipe detection only when scale === 1
     if (
       scaleRef.current === 1 &&
       deltaTime < SWIPE_TIME &&
@@ -156,14 +170,14 @@ export function useGestureControls({
       if (absDeltaX > absDeltaY) {
         // Horizontal swipe → navigation
         if (deltaX > SWIPE_DISTANCE) {
-          onPrev();
+          onPrevRef.current();
         } else if (deltaX < -SWIPE_DISTANCE) {
-          onNext();
+          onNextRef.current();
         }
       } else {
-        // Vertical swipe → close
+        // Vertical swipe → close (swipe up)
         if (deltaY < -SWIPE_DISTANCE) {
-          onClose();
+          onCloseRef.current();
         }
       }
     }
@@ -171,7 +185,7 @@ export function useGestureControls({
     touchStartRef.current = null;
     touchMoveRef.current = null;
     lastTouchRef.current = null;
-  }, [onClose, onNext, onPrev]);
+  }, []);
 
   const handleTouchCancel = useCallback(() => {
     isZoomingRef.current = false;
@@ -207,4 +221,3 @@ export function useGestureControls({
     resetScale: resetScaleAndOffset,
   };
 }
-

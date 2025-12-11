@@ -99,18 +99,22 @@ export function QuotationPreviewModal({
     }
   };
 
-  // Reset scale and offset when preview opens, PDF changes, or modal closes
+  // Reset scale and offset when preview opens
   useEffect(() => {
     if (open) {
-      resetScale();
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        resetScale();
+      });
     }
   }, [open, resetScale]);
 
+  // Reset when PDF changes
   useEffect(() => {
-    if (pdfBlob !== prevPdfBlobRef.current && prevPdfBlobRef.current !== null) {
+    if (open && pdfBlob !== prevPdfBlobRef.current && prevPdfBlobRef.current !== null) {
       resetScale();
     }
-  }, [pdfBlob, resetScale]);
+  }, [open, pdfBlob, resetScale]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -167,11 +171,12 @@ export function QuotationPreviewModal({
         <div className={`flex-1 min-h-0 overflow-hidden relative transition-all duration-300 ease-in-out ${transitionClass}`}>
           <div
             ref={viewerRef}
-            className="relative touch-none overflow-hidden w-full h-full"
+            className="relative touch-none w-full h-full overflow-hidden"
             style={{
               transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
               transformOrigin: "center center",
               transition: isPinching ? "none" : "transform 0.12s ease-out",
+              willChange: isPinching ? "transform" : "auto",
             }}
           >
             <PDFViewer
