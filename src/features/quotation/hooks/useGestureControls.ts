@@ -18,10 +18,12 @@ export function useGestureControls({
   onNext,
   onPrev,
 }: GestureOptions) {
+  // Visible state
   const [scale, setScale] = useState(1);
   const [isPinching, setIsPinching] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
+  // Internal refs (never read React state directly in handlers)
   const scaleRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
 
@@ -61,6 +63,7 @@ export function useGestureControls({
       lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
       touchMoveRef.current = null;
     } else if (e.touches.length === 2) {
+      // Start pinch zoom
       e.preventDefault();
       const [t1, t2] = [e.touches[0], e.touches[1]];
       const distance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -73,8 +76,10 @@ export function useGestureControls({
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
+      // Pinch zoom
       if (isZoomingRef.current && e.touches.length === 2) {
         e.preventDefault();
+        e.stopPropagation();
         const [t1, t2] = [e.touches[0], e.touches[1]];
         const distance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
 
@@ -86,6 +91,7 @@ export function useGestureControls({
         return;
       }
 
+      // Single finger
       if (e.touches.length === 1 && touchStartRef.current) {
         const touch = e.touches[0];
         const dx = touch.clientX - touchStartRef.current.x;
@@ -93,9 +99,17 @@ export function useGestureControls({
 
         touchMoveRef.current = { x: touch.clientX, y: touch.clientY };
 
-        if (scaleRef.current === 1) return;
+        // When NOT zoomed: only hint horizontal navigation, don't pan
+        if (scaleRef.current === 1) {
+          // If clearly horizontal, prevent native scroll to make swipe feel crisp
+          if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+            e.preventDefault();
+          }
+          return;
+        }
 
-        if (lastTouchRef.current) {
+        // When zoomed: pan
+        if (scaleRef.current > 1 && lastTouchRef.current) {
           e.preventDefault();
           const moveDx = touch.clientX - lastTouchRef.current.x;
           const moveDy = touch.clientY - lastTouchRef.current.y;
@@ -126,12 +140,27 @@ export function useGestureControls({
       const dy = touchMoveRef.current.y - touchStartRef.current.y;
       const dt = Date.now() - touchStartRef.current.time;
 
-      if (scaleRef.current === 1 && dt < SWIPE_TIME) {
-        if (Math.abs(dx) > SWIPE_DISTANCE) {
-          if (dx > 0) onPrev();
-          else onNext();
-        } else if (Math.abs(dy) > SWIPE_DISTANCE) {
-          if (dy < 0) onClose();
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      // Swipe gestures only when NOT zoomed
+      if (
+        scaleRef.current === 1 &&
+        dt < SWIPE_TIME &&
+        (absDx > SWIPE_DISTANCE || absDy > SWIPE_DISTANCE)
+      ) {
+        if (absDx > absDy) {
+          // Horizontal swipe -> navigation
+          if (dx > SWIPE_DISTANCE) {
+            onPrev();
+          } else if (dx < -SWIPE_DISTANCE) {
+            onNext();
+          }
+        } else {
+          // Vertical swipe up -> close
+          if (dy < -SWIPE_DISTANCE) {
+            onClose();
+          }
         }
       }
 
@@ -166,7 +195,7 @@ export function useGestureControls({
       el.removeEventListener("touchend", handleTouchEnd);
       el.removeEventListener("touchcancel", handleTouchCancel);
     };
-  }, [containerRef, handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel]);
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel, containerRef]);
 
   return {
     scale,
