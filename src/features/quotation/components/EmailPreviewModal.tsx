@@ -70,7 +70,6 @@ export function EmailPreviewModal({
             </div>
           </DialogHeader>
 
-          {pdfPreviewUrl && (
             {pdfPreviewUrl && (
               <div className="flex-1 min-h-0 border border-slate-600 rounded-lg overflow-hidden relative mt-4">
             
