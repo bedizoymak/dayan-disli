@@ -86,9 +86,6 @@ export function EmailPreviewModal({
               />
             </div>
           )}
-
-        </div>
-        
         <DialogFooter className="gap-2">
           <Button 
             variant="outline" 
