@@ -395,7 +395,8 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full">
+              <table className="w-full table-fixed">
+
                   <thead>
                     <tr className="border-b border-slate-700/50 bg-slate-900/50">
                       <th className="text-left px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Teklif No</th>
@@ -415,18 +416,20 @@ export function RecentQuotationsPanel({ onPanelOpen, onDownload, onPreview }: Re
                     ) : (
                       visibleQuotes.map((quote) => (
                         <tr key={quote.id} className="hover:bg-slate-700/20 transition-colors">
-                          <td className="px-4 py-3">
-                            <span className="text-blue-400 font-medium">
-                              {quote.teklif_no}
-                            </span>
-                          </td>
+                          <td className="px-4 py-3 max-w-[120px]">
+  <span className="text-blue-400 font-medium block truncate">
+    {quote.teklif_no}
+  </span>
+</td>
+
                           <td className="px-4 py-3 text-slate-300 text-sm">
                             {quote.firma}
                           </td>
                           <td className="px-4 py-3 text-slate-400 text-sm">
                             {formatDate(quote.created_at)}
                           </td>
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-2 py-3 text-center whitespace-nowrap">
+
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => handlePreviewPDF(quote)}
