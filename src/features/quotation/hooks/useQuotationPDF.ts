@@ -178,7 +178,6 @@ export function useQuotationPDF() {
       const { error } = await supabase.functions.invoke('send-quotation-email', {
         body: {
           to: formData.email,
-          bcc: 'bediz@dayandisli.com',
           subject: `${teklifNo} No'lu Fiyat Teklifi`,
           html: emailHtml,
           firma: formData.firma,
