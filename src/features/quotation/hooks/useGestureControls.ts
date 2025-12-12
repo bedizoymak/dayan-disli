@@ -41,6 +41,8 @@ export function useGestureControls({
   const pinchStartRef = useRef<{ distance: number; scale: number } | null>(null);
   const isZoomingRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const lastTapTimeRef = useRef<number>(0);
+const DOUBLE_TAP_DELAY = 300;
 
   const updateScale = useCallback((next: number) => {
     const clamped = Math.max(MIN_SCALE, Math.min(MAX_SCALE, next));
@@ -77,6 +79,17 @@ export function useGestureControls({
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       const now = Date.now();
+      // ✅ DOUBLE TAP → RESET ZOOM
+const delta = now - lastTapTimeRef.current;
+
+if (delta > 0 && delta < DOUBLE_TAP_DELAY && scaleRef.current > 1) {
+  resetScaleAndOffset();
+  lastTapTimeRef.current = 0;
+  return;
+}
+
+lastTapTimeRef.current = now;
+
 
       touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: now };
       lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
