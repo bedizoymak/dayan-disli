@@ -69,38 +69,6 @@ export function EmailPreviewModal({
               </Button>
             </div>
           </DialogHeader>
-        
-        <div className="flex-1 min-h-0 my-4 space-y-4">
-          <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-slate-400 mb-1">Alıcı:</p>
-                <p className="text-white font-medium">{email}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-slate-400 mb-1">Konu:</p>
-                <p className="text-white font-medium">{currentTeklifNo} No'lu Fiyat Teklifi</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-            <p className="text-slate-400 text-sm mb-2">Teklif Özeti:</p>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-slate-400">Firma:</span>
-                <span className="text-white ml-2">{firma}</span>
-              </div>
-              <div>
-                <span className="text-slate-400">İlgili:</span>
-                <span className="text-white ml-2">{formatName(ilgiliKisi)}</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-slate-400">Toplam:</span>
-                <span className="text-emerald-400 font-bold ml-2">{formatCurrency(total, activeCurrency)}</span>
-              </div>
-            </div>
-          </div>
 
           {pdfPreviewUrl && (
             <div className="border border-slate-600 rounded-lg overflow-hidden relative">
