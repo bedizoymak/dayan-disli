@@ -1,6 +1,11 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+// supabase/functions/send-quotation-email/index.ts
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import nodemailer from "npm:nodemailer";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const smtpUser = Deno.env.get("SMTP_USER")!;
+const smtpPass = Deno.env.get("GMAIL_APP_PASSWORD")!;
+const smtpHost = Deno.env.get("SMTP_HOST")!;
+const smtpPort = Number(Deno.env.get("SMTP_PORT")!);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,63 +34,42 @@ serve(async (req) => {
     const finalHtml =
       html || "<p>Merhaba, fiyat teklifimiz ekte PDF olarak iletilmiştir.</p>";
 
-    if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY not configured");
-    }
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
 
-    // Prepare attachments for Resend
     const attachments = [];
+
     if (pdfBase64 && pdfFileName) {
       attachments.push({
         filename: pdfFileName,
         content: pdfBase64,
+        encoding: "base64",
+        contentType: "application/pdf",
       });
     }
 
-    // Build recipients list
-    const toList = Array.isArray(to) ? to : [to];
-    const bccList = bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : undefined;
-
-    const emailPayload: Record<string, unknown> = {
-      from: "DAYAN Dişli <onboarding@resend.dev>",
-      to: toList,
+    await transporter.sendMail({
+      from: `"DAYAN Dişli" <${smtpUser}>`,
+      to,
+      bcc,
       subject: finalSubject,
       html: finalHtml,
-    };
-
-    if (bccList && bccList.length > 0) {
-      emailPayload.bcc = bccList;
-    }
-
-    if (attachments.length > 0) {
-      emailPayload.attachments = attachments;
-    }
-
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify(emailPayload),
+      attachments,
     });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`Resend API error: ${errorText}`);
-    }
-
-    const result = await res.json();
-
-    return new Response(JSON.stringify({ success: true, id: result.id }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
-  } catch (error: unknown) {
-    console.error("Email ERROR:", error);
+  } catch (error: any) {
+    console.error("SMTP ERROR:", error);
     return new Response(
-      JSON.stringify({ error: (error as Error).message }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
