@@ -77,10 +77,6 @@ export function EmailPreviewModal({
                 <p className="text-slate-400 mb-1">Alıcı:</p>
                 <p className="text-white font-medium">{email}</p>
               </div>
-              <div>
-                <p className="text-slate-400 mb-1">BCC:</p>
-                <p className="text-white font-medium">bediz@dayandisli.com</p>
-              </div>
               <div className="col-span-2">
                 <p className="text-slate-400 mb-1">Konu:</p>
                 <p className="text-white font-medium">{currentTeklifNo} No'lu Fiyat Teklifi</p>
