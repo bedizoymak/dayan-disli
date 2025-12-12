@@ -106,6 +106,71 @@ export function QuotationPreviewModal({
       setTransitionPhase("drag");
     }
     
+    useEffect(() => {
+      // Modal kapalıysa hiçbir şey yapma
+      if (!open) return;
+    
+      // Animasyon / drag sırasında preload yapma
+      if (transitionPhase !== "idle") return;
+    
+      // 🔹 NEXT preload
+      if (
+        canNavigateRight &&
+        onPreviewRight &&
+        !nextPageBlob &&
+        !isLoadingNext
+      ) {
+        setIsLoadingNext(true);
+    
+        onPreviewRight()
+          .then((blob) => {
+            if (blob instanceof Blob) {
+              setNextPageBlob(blob);
+            }
+          })
+          .catch((err) => {
+            console.error("Next preview preload failed:", err);
+          })
+          .finally(() => {
+            setIsLoadingNext(false);
+          });
+      }
+    
+      // 🔹 PREV preload
+      if (
+        canNavigateLeft &&
+        onPreviewLeft &&
+        !prevPageBlob &&
+        !isLoadingPrev
+      ) {
+        setIsLoadingPrev(true);
+    
+        onPreviewLeft()
+          .then((blob) => {
+            if (blob instanceof Blob) {
+              setPrevPageBlob(blob);
+            }
+          })
+          .catch((err) => {
+            console.error("Prev preview preload failed:", err);
+          })
+          .finally(() => {
+            setIsLoadingPrev(false);
+          });
+      }
+    }, [
+      open,
+      transitionPhase,
+      canNavigateRight,
+      canNavigateLeft,
+      onPreviewRight,
+      onPreviewLeft,
+      nextPageBlob,
+      prevPageBlob,
+      isLoadingNext,
+      isLoadingPrev,
+    ]);
+    
     // Update positions with iOS-like parallax
     const width = containerWidthRef.current || window.innerWidth;
     
@@ -461,27 +526,33 @@ export function QuotationPreviewModal({
           }}
         >
           {/* Previous page preview (left side) */}
-          {canNavigateLeft && onPreviewLeft && (prevPageBlob || transitionPhase === "drag" || transitionPhase === "anim-out" || transitionPhase === "anim-in") && (
-            <div
-              className="absolute inset-0 w-full h-full"
-              style={{
-                transform: `translate3d(${displayPrevX}px, 0, 0)`,
-                transition: isAnimating ? SPRING_TRANSITION : "none",
-                zIndex: (transitionPhase === "drag" && dragX > 0) || (transitionPhase === "anim-out" && pendingDirection === "prev") || (transitionPhase === "anim-in" && pendingDirection === "prev") ? 2 : 1,
-                willChange: "transform",
-                backfaceVisibility: "hidden",
-              }}
-            >
-              <PDFViewer
-                blob={prevPageBlob}
-                onClose={handleClose}
-                canNavigateLeft={false}
-                canNavigateRight={false}
-                suppressLoading={true}
-                disableScrollReset={true}
-              />
-            </div>
-          )}
+          {canNavigateLeft && onPreviewLeft && (
+  <div
+    className="absolute inset-0 w-full h-full"
+    style={{
+      transform: `translate3d(${displayPrevX}px, 0, 0)`,
+      transition: isAnimating ? SPRING_TRANSITION : "none",
+      zIndex:
+        (transitionPhase === "drag" && dragX > 0) ||
+        (transitionPhase === "anim-out" && pendingDirection === "prev") ||
+        (transitionPhase === "anim-in" && pendingDirection === "prev")
+          ? 2
+          : 1,
+      willChange: "transform",
+      backfaceVisibility: "hidden",
+    }}
+  >
+    {prevPageBlob ? (
+      <PDFViewer
+        blob={prevPageBlob}
+        onClose={handleClose}
+        suppressLoading={true}
+        disableScrollReset={true}
+      />
+    ) : null}
+  </div>
+)}
+
 
           {/* Current page - uses stableBlobRef */}
           <div
@@ -513,27 +584,31 @@ export function QuotationPreviewModal({
           </div>
 
           {/* Next page preview (right side) */}
-          {canNavigateRight && onPreviewRight && (nextPageBlob || transitionPhase === "drag" || transitionPhase === "anim-out" || transitionPhase === "anim-in") && (
-            <div
-              className="absolute inset-0 w-full h-full"
-              style={{
-                transform: `translate3d(${displayNextX}px, 0, 0)`,
-                transition: isAnimating ? SPRING_TRANSITION : "none",
-                zIndex: (transitionPhase === "drag" && dragX < 0) || (transitionPhase === "anim-out" && pendingDirection === "next") || (transitionPhase === "anim-in" && pendingDirection === "next") ? 2 : 1,
-                willChange: "transform",
-                backfaceVisibility: "hidden",
-              }}
-            >
-              <PDFViewer
-                blob={nextPageBlob}
-                onClose={handleClose}
-                canNavigateLeft={false}
-                canNavigateRight={false}
-                suppressLoading={true}
-                disableScrollReset={true}
-              />
-            </div>
-          )}
+          {canNavigateRight && onPreviewRight && (
+  <div
+    className="absolute inset-0 w-full h-full"
+    style={{
+      transform: `translate3d(${displayNextX}px, 0, 0)`,
+      transition: isAnimating ? SPRING_TRANSITION : "none",
+      zIndex:
+        (transitionPhase === "drag" && dragX < 0) ||
+        (transitionPhase === "anim-out" && pendingDirection === "next") ||
+        (transitionPhase === "anim-in" && pendingDirection === "next")
+          ? 2
+          : 1,
+    }}
+  >
+    {nextPageBlob ? (
+      <PDFViewer
+        blob={nextPageBlob}
+        suppressLoading
+        disableScrollReset
+        onClose={handleClose}
+      />
+    ) : null}
+  </div>
+)}
+
         </div>
       </DialogContent>
     </Dialog>

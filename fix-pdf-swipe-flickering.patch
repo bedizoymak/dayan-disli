@@ -1,0 +1,204 @@
+diff --git a/src/features/quotation/components/PDFViewer.tsx b/src/features/quotation/components/PDFViewer.tsx
+index 1111111..2222222 100644
+--- a/src/features/quotation/components/PDFViewer.tsx
++++ b/src/features/quotation/components/PDFViewer.tsx
+@@ -34,6 +34,7 @@ interface PDFViewerProps {
+   canNavigateLeft?: boolean;
+   canNavigateRight?: boolean;
+   suppressLoading?: boolean; // Suppress loading screen during transitions
++  disableScrollReset?: boolean; // Prevent scroll position resets during transitions
+ }
+ 
+ export function PDFViewer({
+@@ -44,6 +45,7 @@ export function PDFViewer({
+   canNavigateLeft = false,
+   canNavigateRight = false,
+   suppressLoading = false,
++  disableScrollReset = false,
+ }: PDFViewerProps) {
+   const pagesRef = useRef<HTMLDivElement>(null);
+   const [pdfDoc, setPdfDoc] = useState<any>(null); // PDFDocumentProxy from pdfjs-dist
+@@ -124,18 +126,18 @@ export function PDFViewer({
+       setCurrentPage(1);
+       setBaseScale(1);
+       lastBlobRef.current = null;
+-      // Reset scroll position
+-      if (pagesRef.current) {
++      // Reset scroll position only if not disabled
++      if (!disableScrollReset && pagesRef.current) {
+         pagesRef.current.scrollTop = 0;
+       }
+       return;
+     }
+ 
+-    // Reset scroll when blob changes
++    // Reset scroll when blob changes (only if not disabled)
+     if (lastBlobRef.current !== blob) {
+       lastBlobRef.current = blob;
+-      // Reset scroll position
+-      if (pagesRef.current) {
++      // Reset scroll position only if not disabled
++      if (!disableScrollReset && pagesRef.current) {
+         pagesRef.current.scrollTop = 0;
+       }
+     }
+@@ -185,14 +187,16 @@ export function PDFViewer({
+         setNumPages(pdf.numPages);
+         setCurrentPage(1);
+         
+-        // Reset scroll position after a brief delay to ensure DOM is ready
+-        setTimeout(() => {
+-          if (pagesRef.current) {
+-            pagesRef.current.scrollTop = 0;
+-          }
+-        }, 100);
++        // Reset scroll position after a brief delay to ensure DOM is ready (only if not disabled)
++        if (!disableScrollReset) {
++          setTimeout(() => {
++            if (pagesRef.current) {
++              pagesRef.current.scrollTop = 0;
++            }
++          }, 100);
++        }
+       } catch (err) {
+         console.error("Error loading PDF:", err);
+         const errorMessage = err instanceof Error ? err.message : "PDF yüklenemedi";
+@@ -204,7 +208,7 @@ export function PDFViewer({
+     }
+ 
+     loadPDF();
+-  }, [blob, calculateBaseScale, cleanup]);
++  }, [blob, calculateBaseScale, cleanup, disableScrollReset]);
+ 
+   // Render a single page
+   const renderPage = useCallback(
+@@ -243,12 +247,8 @@ export function PDFViewer({
+         container.style.height = `${displayHeight}px`;
+ 
+         // Render page
+-        const context = canvas.getContext("2d");
++        const context = canvas.getContext("2d", { alpha: false });
+         if (!context) return;
+-
+-        // Clear canvas before rendering
+-        context.clearRect(0, 0, canvas.width, canvas.height);
+-
+         const renderContext = {
+           canvasContext: context,
+           viewport: viewport,
+@@ -360,13 +360,16 @@ export function PDFViewer({
+   }
+ 
+   return (
+-    <div className="w-full h-full overflow-hidden relative bg-slate-900">
++    <div className="w-full h-full overflow-hidden relative bg-slate-900" style={{ transform: "translateZ(0)" }}>
+       {/* Pages container with scroll-snap */}
+       <div
+         ref={pagesRef}
+         className="w-full h-full overflow-y-auto overflow-x-hidden"
+         style={{
+           scrollSnapType: "y mandatory",
+-          scrollBehavior: "smooth",
++          scrollBehavior: "auto",
+           WebkitOverflowScrolling: "touch", // Smooth scrolling on iOS
++          willChange: "scroll-position",
++          backfaceVisibility: "hidden",
+         }}
+       >
+         {Array.from({ length: numPages }, (_, i) => {
+@@ -381,6 +384,9 @@ export function PDFViewer({
+                 minHeight: "100vh",
+                 scrollSnapAlign: "start",
+                 scrollSnapStop: "always",
++                willChange: "transform",
++                backfaceVisibility: "hidden",
++                transform: "translateZ(0)",
+               }}
+             >
+               <canvas
+@@ -393,6 +399,9 @@ export function PDFViewer({
+                   width: "100%",
+                   height: "100%",
+                   objectFit: "contain",
++                  willChange: "transform",
++                  backfaceVisibility: "hidden",
++                  transform: "translateZ(0)",
+                 }}
+               />
+             </div>
+diff --git a/src/features/quotation/components/QuotationPreviewModal.tsx b/src/features/quotation/components/QuotationPreviewModal.tsx
+index 3333333..4444444 100644
+--- a/src/features/quotation/components/QuotationPreviewModal.tsx
++++ b/src/features/quotation/components/QuotationPreviewModal.tsx
+@@ -453,7 +453,11 @@ export function QuotationPreviewModal({
+ 
+         <div
+           ref={containerRef}
+-          className="flex-1 min-h-0 overflow-hidden relative bg-slate-900"
++          className="flex-1 min-h-0 overflow-hidden relative bg-slate-900"
++          style={{
++            isolation: "isolate",
++            transform: "translateZ(0)",
++            backfaceVisibility: "hidden",
++          }}
+         >
+           {/* Previous page preview (left side) */}
+           {canNavigateLeft && onPreviewLeft && (prevPageBlob || transitionPhase === "drag" || transitionPhase === "anim-out" || transitionPhase === "anim-in") && (
+@@ -463,6 +467,8 @@ export function QuotationPreviewModal({
+                 transform: `translate3d(${displayPrevX}px, 0, 0)`,
+                 transition: isAnimating ? SPRING_TRANSITION : "none",
+                 zIndex: (transitionPhase === "drag" && dragX > 0) || (transitionPhase === "anim-out" && pendingDirection === "prev") || (transitionPhase === "anim-in" && pendingDirection === "prev") ? 2 : 1,
++                willChange: "transform",
++                backfaceVisibility: "hidden",
+               }}
+             >
+               <PDFViewer
+@@ -470,7 +476,8 @@ export function QuotationPreviewModal({
+                 onClose={handleClose}
+                 canNavigateLeft={false}
+                 canNavigateRight={false}
+-                suppressLoading={transitionPhase === "anim-in" && pendingDirection === "prev"}
++                suppressLoading={true}
++                disableScrollReset={true}
+               />
+             </div>
+           )}
+@@ -487,6 +494,7 @@ export function QuotationPreviewModal({
+                 : isPinching
+                 ? "none"
+                 : "transform 0.12s ease-out",
+               willChange: "transform",
++              backfaceVisibility: "hidden",
+               zIndex: 3,
+             }}
+           >
+@@ -497,7 +505,8 @@ export function QuotationPreviewModal({
+               onNavigateRight={handleNextWithAnimation}
+               canNavigateLeft={canNavigateLeft}
+               canNavigateRight={canNavigateRight}
+-              suppressLoading={isTransitioning}
++              suppressLoading={isTransitioning}
++              disableScrollReset={isTransitioning}
+             />
+           </div>
+ 
+@@ -509,6 +518,8 @@ export function QuotationPreviewModal({
+                 transform: `translate3d(${displayNextX}px, 0, 0)`,
+                 transition: isAnimating ? SPRING_TRANSITION : "none",
+                 zIndex: (transitionPhase === "drag" && dragX < 0) || (transitionPhase === "anim-out" && pendingDirection === "next") || (transitionPhase === "anim-in" && pendingDirection === "next") ? 2 : 1,
++                willChange: "transform",
++                backfaceVisibility: "hidden",
+               }}
+             >
+               <PDFViewer
+@@ -516,7 +527,8 @@ export function QuotationPreviewModal({
+                 onClose={handleClose}
+                 canNavigateLeft={false}
+                 canNavigateRight={false}
+-                suppressLoading={transitionPhase === "anim-in" && pendingDirection === "next"}
++                suppressLoading={true}
++                disableScrollReset={true}
+               />
+             </div>
+           )}
+
