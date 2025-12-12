@@ -80,10 +80,11 @@ export function EmailPreviewModal({
                 }
               `}</style>
               <iframe
-                src={`${pdfPreviewUrl}#filename=${encodeURIComponent(currentTeklifNo)}.pdf`}
-                className="w-full h-[800px] bg-white"
-                title={`${currentTeklifNo}.pdf`}
-              />
+  src={`${pdfPreviewUrl}#zoom=page-width&view=FitH&filename=${encodeURIComponent(currentTeklifNo)}.pdf`}
+  className="w-full h-[800px] bg-white"
+  title={`${currentTeklifNo}.pdf`}
+/>
+
             </div>
           )}
         <DialogFooter className="gap-2">
