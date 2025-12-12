@@ -81,7 +81,7 @@ export function EmailPreviewModal({
               `}</style>
               <iframe
                 src={`${pdfPreviewUrl}#filename=${encodeURIComponent(currentTeklifNo)}.pdf`}
-                className="w-full h-[300px] bg-white"
+                className="w-full h-[500px] bg-white"
                 title={`${currentTeklifNo}.pdf`}
               />
             </div>
