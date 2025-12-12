@@ -106,71 +106,6 @@ export function QuotationPreviewModal({
       setTransitionPhase("drag");
     }
     
-    useEffect(() => {
-      // Modal kapalıysa hiçbir şey yapma
-      if (!open) return;
-    
-      // Animasyon / drag sırasında preload yapma
-      if (transitionPhase !== "idle") return;
-    
-      // 🔹 NEXT preload
-      if (
-        canNavigateRight &&
-        onPreviewRight &&
-        !nextPageBlob &&
-        !isLoadingNext
-      ) {
-        setIsLoadingNext(true);
-    
-        onPreviewRight()
-          .then((blob) => {
-            if (blob instanceof Blob) {
-              setNextPageBlob(blob);
-            }
-          })
-          .catch((err) => {
-            console.error("Next preview preload failed:", err);
-          })
-          .finally(() => {
-            setIsLoadingNext(false);
-          });
-      }
-    
-      // 🔹 PREV preload
-      if (
-        canNavigateLeft &&
-        onPreviewLeft &&
-        !prevPageBlob &&
-        !isLoadingPrev
-      ) {
-        setIsLoadingPrev(true);
-    
-        onPreviewLeft()
-          .then((blob) => {
-            if (blob instanceof Blob) {
-              setPrevPageBlob(blob);
-            }
-          })
-          .catch((err) => {
-            console.error("Prev preview preload failed:", err);
-          })
-          .finally(() => {
-            setIsLoadingPrev(false);
-          });
-      }
-    }, [
-      open,
-      transitionPhase,
-      canNavigateRight,
-      canNavigateLeft,
-      onPreviewRight,
-      onPreviewLeft,
-      nextPageBlob,
-      prevPageBlob,
-      isLoadingNext,
-      isLoadingPrev,
-    ]);
-    
     // Update positions with iOS-like parallax
     const width = containerWidthRef.current || window.innerWidth;
     
@@ -540,6 +475,9 @@ export function QuotationPreviewModal({
           : 1,
       willChange: "transform",
       backfaceVisibility: "hidden",
+      contain: "layout style paint",
+      isolation: "isolate",
+      pointerEvents: displayPrevX < -width * 0.8 ? "none" : "auto",
     }}
   >
     {prevPageBlob ? (
@@ -569,6 +507,8 @@ export function QuotationPreviewModal({
               willChange: "transform",
               backfaceVisibility: "hidden",
               zIndex: 3,
+              contain: "layout style paint",
+              isolation: "isolate",
             }}
           >
             <PDFViewer
@@ -585,30 +525,31 @@ export function QuotationPreviewModal({
 
           {/* Next page preview (right side) */}
           {canNavigateRight && onPreviewRight && (
-  <div
-    className="absolute inset-0 w-full h-full"
-    style={{
-      transform: `translate3d(${displayNextX}px, 0, 0)`,
-      transition: isAnimating ? SPRING_TRANSITION : "none",
-      zIndex:
-        (transitionPhase === "drag" && dragX < 0) ||
-        (transitionPhase === "anim-out" && pendingDirection === "next") ||
-        (transitionPhase === "anim-in" && pendingDirection === "next")
-          ? 2
-          : 1,
-    }}
-  >
-    {nextPageBlob ? (
-      <PDFViewer
-        blob={nextPageBlob}
-        suppressLoading
-        disableScrollReset
-        onClose={handleClose}
-      />
-    ) : null}
-  </div>
-)}
-
+            <div
+              className="absolute inset-0 w-full h-full"
+              style={{
+                transform: `translate3d(${displayNextX}px, 0, 0)`,
+                transition: isAnimating ? SPRING_TRANSITION : "none",
+                zIndex: (transitionPhase === "drag" && dragX < 0) || (transitionPhase === "anim-out" && pendingDirection === "next") || (transitionPhase === "anim-in" && pendingDirection === "next") ? 2 : 1,
+                willChange: "transform",
+                backfaceVisibility: "hidden",
+                contain: "layout style paint",
+                isolation: "isolate",
+                pointerEvents: displayNextX > width * 0.8 ? "none" : "auto",
+              }}
+            >
+              {nextPageBlob ? (
+                <PDFViewer
+                  blob={nextPageBlob}
+                  onClose={handleClose}
+                  canNavigateLeft={false}
+                  canNavigateRight={false}
+                  suppressLoading={true}
+                  disableScrollReset={true}
+                />
+              ) : null}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

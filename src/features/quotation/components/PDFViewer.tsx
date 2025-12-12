@@ -60,6 +60,7 @@ export function PDFViewer({
   const renderTasksRef = useRef<Map<number, any>>(new Map()); // RenderTask from pdfjs-dist
   const pdfDocRef = useRef<any>(null); // PDFDocumentProxy from pdfjs-dist
   const lastBlobRef = useRef<Blob | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
 
   // Calculate base scale to fit viewport
   const calculateBaseScale = useCallback(async (pdf: any) => {
@@ -108,6 +109,12 @@ export function PDFViewer({
       }
       pdfDocRef.current = null;
     }
+    
+    // Revoke blob URL
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
   }, []);
 
   // Cleanup on unmount
@@ -127,6 +134,10 @@ export function PDFViewer({
       setCurrentPage(1);
       setBaseScale(1);
       lastBlobRef.current = null;
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
       // Reset scroll position only if not disabled
       if (!disableScrollReset && pagesRef.current) {
         pagesRef.current.scrollTop = 0;
@@ -134,14 +145,15 @@ export function PDFViewer({
       return;
     }
 
-    // Reset scroll when blob changes (only if not disabled)
-    if (lastBlobRef.current !== blob) {
-      lastBlobRef.current = blob;
-      // Reset scroll position only if not disabled
-      if (!disableScrollReset && pagesRef.current) {
-        pagesRef.current.scrollTop = 0;
-      }
+    // Check if blob actually changed (avoid reload if same blob)
+    const blobChanged = lastBlobRef.current !== blob;
+    
+    if (!blobChanged && pdfDoc) {
+      // Same blob, don't reload
+      return;
     }
+
+    lastBlobRef.current = blob;
 
     setIsLoading(true);
     setError(null);
@@ -159,6 +171,11 @@ export function PDFViewer({
 
         // Cleanup previous PDF
         cleanup();
+        
+        // Revoke previous blob URL
+        if (blobUrlRef.current) {
+          URL.revokeObjectURL(blobUrlRef.current);
+        }
 
         const arrayBuffer = await blob.arrayBuffer();
         
@@ -187,13 +204,14 @@ export function PDFViewer({
         setNumPages(pdf.numPages);
         setCurrentPage(1);
         
-        // Reset scroll position after a brief delay to ensure DOM is ready (only if not disabled)
-        if (!disableScrollReset) {
-          setTimeout(() => {
+        // Only reset scroll when blob actually changed and not disabled
+        if (blobChanged && !disableScrollReset && pagesRef.current) {
+          // Use requestAnimationFrame to ensure DOM is ready
+          requestAnimationFrame(() => {
             if (pagesRef.current) {
               pagesRef.current.scrollTop = 0;
             }
-          }, 100);
+          });
         }
       } catch (err) {
         console.error("Error loading PDF:", err);
@@ -208,7 +226,7 @@ export function PDFViewer({
     };
 
     loadPDF();
-  }, [blob, calculateBaseScale, cleanup, disableScrollReset]);
+  }, [blob, calculateBaseScale, cleanup, disableScrollReset, pdfDoc]);
 
   // Render a single page
   const renderPage = useCallback(
@@ -289,9 +307,21 @@ export function PDFViewer({
     };
   }, [pdfDoc, calculateBaseScale]);
 
+  // Track if we've rendered this PDF document already
+  const renderedPdfRef = useRef<any>(null);
+  const renderedScaleRef = useRef<number>(0);
+
   // Render all pages when PDF or baseScale changes
   useEffect(() => {
     if (!pdfDoc || numPages === 0 || baseScale === 0) return;
+
+    // Avoid re-rendering if same PDF and same scale
+    if (renderedPdfRef.current === pdfDoc && Math.abs(renderedScaleRef.current - baseScale) < 0.01) {
+      return;
+    }
+
+    renderedPdfRef.current = pdfDoc;
+    renderedScaleRef.current = baseScale;
 
     const renderAll = async () => {
       for (let i = 1; i <= numPages; i++) {
@@ -360,7 +390,7 @@ export function PDFViewer({
   }
 
   return (
-    <div className="w-full h-full overflow-hidden relative bg-slate-900" style={{ transform: "translateZ(0)" }}>
+    <div className="w-full h-full overflow-hidden relative bg-slate-900" style={{ transform: "translateZ(0)", isolation: "isolate", contain: "layout style paint" }}>
       {/* Pages container with scroll-snap */}
       <div
         ref={pagesRef}
@@ -371,6 +401,7 @@ export function PDFViewer({
           WebkitOverflowScrolling: "touch", // Smooth scrolling on iOS
           willChange: "scroll-position",
           backfaceVisibility: "hidden",
+          transform: "translateZ(0)",
         }}
       >
         {Array.from({ length: numPages }, (_, i) => {
@@ -387,9 +418,10 @@ export function PDFViewer({
                 minHeight: "100vh",
                 scrollSnapAlign: "start",
                 scrollSnapStop: "always",
-                willChange: "transform",
+                willChange: "scroll-position",
                 backfaceVisibility: "hidden",
                 transform: "translateZ(0)",
+                contain: "layout style paint",
               }}
             >
               <canvas
@@ -406,6 +438,8 @@ export function PDFViewer({
                   willChange: "transform",
                   backfaceVisibility: "hidden",
                   transform: "translateZ(0)",
+                  imageRendering: "-webkit-optimize-contrast",
+                  WebkitFontSmoothing: "subpixel-antialiased",
                 }}
               />
             </div>
