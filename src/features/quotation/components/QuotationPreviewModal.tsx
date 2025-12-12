@@ -454,6 +454,11 @@ export function QuotationPreviewModal({
         <div
           ref={containerRef}
           className="flex-1 min-h-0 overflow-hidden relative bg-slate-900"
+          style={{
+            isolation: "isolate",
+            transform: "translateZ(0)",
+            backfaceVisibility: "hidden",
+          }}
         >
           {/* Previous page preview (left side) */}
           {canNavigateLeft && onPreviewLeft && (prevPageBlob || transitionPhase === "drag" || transitionPhase === "anim-out" || transitionPhase === "anim-in") && (
@@ -463,6 +468,8 @@ export function QuotationPreviewModal({
                 transform: `translate3d(${displayPrevX}px, 0, 0)`,
                 transition: isAnimating ? SPRING_TRANSITION : "none",
                 zIndex: (transitionPhase === "drag" && dragX > 0) || (transitionPhase === "anim-out" && pendingDirection === "prev") || (transitionPhase === "anim-in" && pendingDirection === "prev") ? 2 : 1,
+                willChange: "transform",
+                backfaceVisibility: "hidden",
               }}
             >
               <PDFViewer
@@ -470,7 +477,8 @@ export function QuotationPreviewModal({
                 onClose={handleClose}
                 canNavigateLeft={false}
                 canNavigateRight={false}
-                suppressLoading={transitionPhase === "anim-in" && pendingDirection === "prev"}
+                suppressLoading={true}
+                disableScrollReset={true}
               />
             </div>
           )}
@@ -488,6 +496,7 @@ export function QuotationPreviewModal({
                 ? "none"
                 : "transform 0.12s ease-out",
               willChange: "transform",
+              backfaceVisibility: "hidden",
               zIndex: 3,
             }}
           >
@@ -499,6 +508,7 @@ export function QuotationPreviewModal({
               canNavigateLeft={canNavigateLeft}
               canNavigateRight={canNavigateRight}
               suppressLoading={isTransitioning}
+              disableScrollReset={isTransitioning}
             />
           </div>
 
@@ -510,6 +520,8 @@ export function QuotationPreviewModal({
                 transform: `translate3d(${displayNextX}px, 0, 0)`,
                 transition: isAnimating ? SPRING_TRANSITION : "none",
                 zIndex: (transitionPhase === "drag" && dragX < 0) || (transitionPhase === "anim-out" && pendingDirection === "next") || (transitionPhase === "anim-in" && pendingDirection === "next") ? 2 : 1,
+                willChange: "transform",
+                backfaceVisibility: "hidden",
               }}
             >
               <PDFViewer
@@ -517,7 +529,8 @@ export function QuotationPreviewModal({
                 onClose={handleClose}
                 canNavigateLeft={false}
                 canNavigateRight={false}
-                suppressLoading={transitionPhase === "anim-in" && pendingDirection === "next"}
+                suppressLoading={true}
+                disableScrollReset={true}
               />
             </div>
           )}

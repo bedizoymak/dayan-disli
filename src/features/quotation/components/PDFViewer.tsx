@@ -35,6 +35,7 @@ interface PDFViewerProps {
   canNavigateLeft?: boolean;
   canNavigateRight?: boolean;
   suppressLoading?: boolean; // Suppress loading screen during transitions
+  disableScrollReset?: boolean; // Prevent scroll position resets during transitions
 }
 
 export function PDFViewer({
@@ -45,6 +46,7 @@ export function PDFViewer({
   canNavigateLeft = false,
   canNavigateRight = false,
   suppressLoading = false,
+  disableScrollReset = false,
 }: PDFViewerProps) {
   const pagesRef = useRef<HTMLDivElement>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null); // PDFDocumentProxy from pdfjs-dist
@@ -125,18 +127,18 @@ export function PDFViewer({
       setCurrentPage(1);
       setBaseScale(1);
       lastBlobRef.current = null;
-      // Reset scroll position
-      if (pagesRef.current) {
+      // Reset scroll position only if not disabled
+      if (!disableScrollReset && pagesRef.current) {
         pagesRef.current.scrollTop = 0;
       }
       return;
     }
 
-    // Reset scroll when blob changes
+    // Reset scroll when blob changes (only if not disabled)
     if (lastBlobRef.current !== blob) {
       lastBlobRef.current = blob;
-      // Reset scroll position
-      if (pagesRef.current) {
+      // Reset scroll position only if not disabled
+      if (!disableScrollReset && pagesRef.current) {
         pagesRef.current.scrollTop = 0;
       }
     }
@@ -185,12 +187,14 @@ export function PDFViewer({
         setNumPages(pdf.numPages);
         setCurrentPage(1);
         
-        // Reset scroll position after a brief delay to ensure DOM is ready
-        setTimeout(() => {
-          if (pagesRef.current) {
-            pagesRef.current.scrollTop = 0;
-          }
-        }, 100);
+        // Reset scroll position after a brief delay to ensure DOM is ready (only if not disabled)
+        if (!disableScrollReset) {
+          setTimeout(() => {
+            if (pagesRef.current) {
+              pagesRef.current.scrollTop = 0;
+            }
+          }, 100);
+        }
       } catch (err) {
         console.error("Error loading PDF:", err);
         const errorMessage = err instanceof Error ? err.message : "PDF yüklenemedi";
@@ -204,7 +208,7 @@ export function PDFViewer({
     };
 
     loadPDF();
-  }, [blob, calculateBaseScale, cleanup]);
+  }, [blob, calculateBaseScale, cleanup, disableScrollReset]);
 
   // Render a single page
   const renderPage = useCallback(
@@ -243,11 +247,8 @@ export function PDFViewer({
         container.style.height = `${displayHeight}px`;
 
         // Render page
-        const context = canvas.getContext("2d");
+        const context = canvas.getContext("2d", { alpha: false });
         if (!context) return;
-
-        // Clear canvas before rendering
-        context.clearRect(0, 0, canvas.width, canvas.height);
 
         const renderContext = {
           canvasContext: context,
@@ -359,15 +360,17 @@ export function PDFViewer({
   }
 
   return (
-    <div className="w-full h-full overflow-hidden relative bg-slate-900">
+    <div className="w-full h-full overflow-hidden relative bg-slate-900" style={{ transform: "translateZ(0)" }}>
       {/* Pages container with scroll-snap */}
       <div
         ref={pagesRef}
         className="w-full h-full overflow-y-auto overflow-x-hidden"
         style={{
           scrollSnapType: "y mandatory",
-          scrollBehavior: "smooth",
+          scrollBehavior: "auto",
           WebkitOverflowScrolling: "touch", // Smooth scrolling on iOS
+          willChange: "scroll-position",
+          backfaceVisibility: "hidden",
         }}
       >
         {Array.from({ length: numPages }, (_, i) => {
@@ -384,6 +387,9 @@ export function PDFViewer({
                 minHeight: "100vh",
                 scrollSnapAlign: "start",
                 scrollSnapStop: "always",
+                willChange: "transform",
+                backfaceVisibility: "hidden",
+                transform: "translateZ(0)",
               }}
             >
               <canvas
@@ -397,6 +403,9 @@ export function PDFViewer({
                   width: "100%",
                   height: "100%",
                   objectFit: "contain",
+                  willChange: "transform",
+                  backfaceVisibility: "hidden",
+                  transform: "translateZ(0)",
                 }}
               />
             </div>
