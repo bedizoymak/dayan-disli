@@ -71,7 +71,9 @@ export function EmailPreviewModal({
           </DialogHeader>
 
           {pdfPreviewUrl && (
-            <div className="border border-slate-600 rounded-lg overflow-hidden relative">
+            {pdfPreviewUrl && (
+              <div className="flex-1 min-h-0 border border-slate-600 rounded-lg overflow-hidden relative mt-4">
+            
               <style>{`
                 iframe[title="${currentTeklifNo}.pdf"] + * .toolbarButton#download,
                 iframe[title="${currentTeklifNo}.pdf"] ~ * .toolbarButton#download,
@@ -80,10 +82,11 @@ export function EmailPreviewModal({
                 }
               `}</style>
               <iframe
-                src={`${pdfPreviewUrl}#filename=${encodeURIComponent(currentTeklifNo)}.pdf`}
-                className="w-full h-[300px] bg-white"
-                title={`${currentTeklifNo}.pdf`}
-              />
+  src={`${pdfPreviewUrl}#filename=${encodeURIComponent(currentTeklifNo)}.pdf`}
+  className="w-full h-full bg-white"
+  title={`${currentTeklifNo}.pdf`}
+/>
+
             </div>
           )}
         <DialogFooter className="gap-2">
