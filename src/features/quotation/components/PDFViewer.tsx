@@ -414,8 +414,8 @@ export function PDFViewer({
               }}
               className="flex items-center justify-center w-full"
               style={{
-                height: "100vh",
-                minHeight: "100vh",
+                height: "100%",
+                minHeight: "100%",
                 scrollSnapAlign: "start",
                 scrollSnapStop: "always",
                 willChange: "scroll-position",
@@ -457,3 +457,4 @@ export function PDFViewer({
   );
 }
 
+//test
