@@ -89,17 +89,9 @@ const TeklifPage = () => {
     teslimYeri: form.teslimYeri,
   });
 
-  // PDF Download Handler
-  const handleGeneratePDF = async () => {
-    if (!form.firma || !form.ilgiliKisi) {
-      toast({
-        title: "Eksik Bilgi",
-        description: "Lütfen firma ve ilgili kişi bilgilerini doldurun.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  // Shared helper to ensure quotation is saved to database exactly once
+  const ensureQuotationSaved = async (): Promise<string | null> => {
+    // Get or generate teklif number
     const teklifNo = await form.getOrGenerateTeklifNo();
     if (!teklifNo) {
       toast({
@@ -107,14 +99,37 @@ const TeklifPage = () => {
         description: "Teklif numarası alınamadı!",
         variant: "destructive",
       });
-      return;
+      return null;
     }
 
+    // Update form state
     form.setCurrentTeklifNo(teklifNo);
-    form.setLastFinalizedTeklifNo(teklifNo);
-    form.markFormFinalized();
 
-    const { error } = await supabase.from("quotations").insert({
+    // Check if this quotation already exists in database
+    const { data: existing, error: checkError } = await supabase
+      .from("quotations")
+      .select("teklif_no")
+      .eq("teklif_no", teklifNo)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error("Error checking existing quotation:", checkError);
+      toast({
+        title: "Veritabanı Hatası",
+        description: "Teklif kontrolü yapılamadı!",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    // If quotation already exists, skip insert
+    if (existing) {
+      console.log(`Quotation ${teklifNo} already exists, skipping insert`);
+      return teklifNo;
+    }
+
+    // Insert new quotation to database
+    const { error: insertError } = await supabase.from("quotations").insert({
       teklif_no: teklifNo,
       firma: form.firma,
       ilgili_kisi: form.ilgiliKisi,
@@ -132,17 +147,40 @@ const TeklifPage = () => {
       kdv: form.calculateKDV(),
       total: form.calculateTotal()
     });
-  
-    if (error) {
-      console.error(error);
+
+    if (insertError) {
+      console.error("Error inserting quotation:", insertError);
       toast({
         title: "Kaydetme Hatası",
-        description: "Supabase’e kayıt yapılamadı!",
+        description: "Supabase'e kayıt yapılamadı!",
         variant: "destructive",
+      });
+      return null;
+    }
+
+    console.log(`Quotation ${teklifNo} saved successfully`);
+    return teklifNo;
+  };
+
+  // PDF Download Handler
+  const handleGeneratePDF = async () => {
+    if (!form.firma || !form.ilgiliKisi) {
+      toast({
+        title: "Eksik Bilgi",
+        description: "Lütfen firma ve ilgili kişi bilgilerini doldurun.",
+        variant: "destructive"
       });
       return;
     }
-  
+
+    // Ensure quotation is saved to database
+    const teklifNo = await ensureQuotationSaved();
+    if (!teklifNo) {
+      return;
+    }
+
+    form.setLastFinalizedTeklifNo(teklifNo);
+    form.markFormFinalized();
 
     await pdf.generatePDF(
       teklifNo,
@@ -167,12 +205,11 @@ const TeklifPage = () => {
     }
 
     try {
-      const teklifNo = await form.getOrGenerateTeklifNo();
+      // Ensure quotation is saved to database
+      const teklifNo = await ensureQuotationSaved();
       if (!teklifNo) {
-        throw new Error("Teklif numarası alınamadı");
+        return;
       }
-
-      form.setCurrentTeklifNo(teklifNo);
 
       await pdf.createPDFPreview(
         teklifNo,
@@ -240,12 +277,11 @@ const TeklifPage = () => {
     }
 
     try {
-      const teklifNo = await form.getOrGenerateTeklifNo();
+      // Ensure quotation is saved to database
+      const teklifNo = await ensureQuotationSaved();
       if (!teklifNo) {
-        throw new Error("Teklif numarası alınamadı");
+        return;
       }
-
-      form.setCurrentTeklifNo(teklifNo);
 
       await pdf.createPDFPreview(
         teklifNo,
